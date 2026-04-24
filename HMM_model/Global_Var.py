@@ -2,6 +2,7 @@
 TASK_SYMBOL = 0
 
 CLUSTERS = 64
+N_CLUSTERS = CLUSTERS
 
-#for PCA in [hmm_model_o.py] 
+# for PCA in [hmm_model_o.py] and [train_observations.py]
 PCA_COMPONENTS = 4
