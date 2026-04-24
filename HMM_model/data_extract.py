@@ -135,7 +135,13 @@ class DataExtract:
                 'surgeme': list_surgeme,
             }
 
-        sorted_surgemes = sorted(surgeme_dict, key=lambda x: int(x[1:]))
+        def _surgeme_sort_key(label: str) -> int:
+            try:
+                return int(label[1:])
+            except (ValueError, IndexError):
+                return 0
+
+        sorted_surgemes = sorted(surgeme_dict, key=_surgeme_sort_key)
         self.surgeme_dict = surgeme_dict
         self.metadata_res['metadata'] = {
             'surgeme_list': sorted_surgemes,
@@ -316,8 +322,14 @@ class DataExtract:
                     for row in content:
                         trial_name = '_'.join(row[0].split('_')[:2])
                         try:
-                            trial_label = self.skill_level(trial_name, int(row[1]))
+                            score = int(row[1])
                         except (ValueError, IndexError):
+                            # skip rows where the score column is missing or non-numeric
+                            continue
+                        try:
+                            trial_label = self.skill_level(trial_name, score)
+                        except ValueError:
+                            # skip rows with an unrecognised task name
                             continue
                         content_list.append((trial_name, trial_label))
 
@@ -421,7 +433,10 @@ class DataExtract:
                         }
                         labels_dict[real_label] = 0
 
-                annotations['labels'] = sorted(labels_dict, key=lambda x: int(x[1:]))
+                annotations['labels'] = sorted(
+                    labels_dict,
+                    key=lambda x: int(x[1:]) if len(x) > 1 and x[1:].isdigit() else 0,
+                )
                 with open(save_file_loc, 'w') as f:
                     json.dump(annotations, f, indent=4)
 
