@@ -1,99 +1,123 @@
+#!/usr/bin/env python3
+"""
+Data loading and feature extraction for kinematic analysis.
 
-import os
-import glob
+Reads JIGSAWS meta-data and per-trial kinematic files, computes trajectory
+features via :class:`DataCal`, and returns feature/label arrays.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
 import numpy as np
 
-from calculation_new import *
+from calculation_new import DataCal
 
 
-class TimeSeriesData(object):
-    def __init__(self):
-        self.classmode = ['GRS'] # ['SELFPROCLAIMED']
-        self.metaData = {}
-        
-    def choose_file(self,file_name):
-        self.file_name = file_name
-        print("loading data name is:",self.file_name)
+class TimeSeriesData:
+    """Load kinematic data and compute per-trial trajectory features."""
 
-    def getMetaData(self):        
-        count = 0
-        for file in glob.glob (self.file_name + '\meta_file_' + '*' + '.txt'):
-            for line in open (file, 'r'):
-                line = line.strip ()
-                if len (line) == 0:
+    def __init__(self) -> None:
+        self.classmode: list[str] = ["GRS"]
+        self.metaData: dict = {}
+        self.file_name: str = ""
+
+    def choose_file(self, file_name: str | Path) -> None:
+        """Set the root directory containing the meta-data file.
+
+        Args:
+            file_name: Path to the task directory (e.g. ``".../Suturing"``).
+        """
+        self.file_name = str(file_name)
+        print(f"loading data name is: {self.file_name}")
+
+    def getMetaData(self) -> None:  # noqa: N802 – kept for backward compat
+        """Parse the task meta-data file and populate ``self.metaData``."""
+        for meta_file in Path(self.file_name).glob("meta_file_*.txt"):
+            for line in meta_file.read_text().splitlines():
+                line = line.strip()
+                if not line:
                     break
-                b = line.split ()
-                surgery_name = b[0]
-                skill_level = b[1]
-                b = b[2:]
-                scores = [int (e) for e in b]
+                parts = line.split()
+                surgery_name = parts[0]
+                skill_level = parts[1]
+                scores = [int(e) for e in parts[2:]]
                 self.metaData[surgery_name] = (skill_level, scores)
 
-    def getSkillLevel(self, surgery_name):
-        if self.metaData.__contains__ (surgery_name):
-            if self.classmode[0] == 'GRS':
-                score_grs = self.metaData[surgery_name][1][0]
+    def getSkillLevel(self, surgery_name: str) -> int | None:  # noqa: N802 – kept for backward compat
+        """Return the skill label for *surgery_name*, or ``None`` if unknown.
 
-                if surgery_name.__contains__ ('Knot_Tying'):
-                    if score_grs <= 15:
-                        y = 0   #novice
-                    elif score_grs > 15 and score_grs < 19:
-                        y = 1
-                    else:
-                        y = 2   #expert
-                if surgery_name.__contains__ ('Suturing'):
-                    if score_grs <= 15:
-                        y = 0   #novice
-                    elif score_grs > 15 and score_grs < 19:
-                        y = 1
-                    else:
-                        y = 2   #expert
-                elif surgery_name.__contains__ ('Needle_Passing'):
-                    if score_grs <= 15:
-                        y = 0   #novice
-                    elif score_grs > 15 and score_grs < 20:
-                        y = 1
-                    else:
-                        y = 2   #expert
-                return y
+        Args:
+            surgery_name: Trial identifier, e.g. ``"Suturing_D001"``.
+
+        Returns:
+            ``0`` for novice, ``1`` for intermediate, ``2`` for expert,
+            or ``None`` if the surgery is not in the metadata.
+        """
+        if surgery_name not in self.metaData:
+            return None
+
+        if self.classmode[0] != "GRS":
+            return None
+
+        score_grs = self.metaData[surgery_name][1][0]
+
+        if "Knot_Tying" in surgery_name:
+            if score_grs <= 15:
+                return 0
+            elif score_grs < 19:
+                return 1
+            return 2
+        if "Suturing" in surgery_name:
+            if score_grs <= 15:
+                return 0
+            elif score_grs < 19:
+                return 1
+            return 2
+        if "Needle_Passing" in surgery_name:
+            if score_grs <= 15:
+                return 0
+            elif score_grs < 20:
+                return 1
+            return 2
         return None
 
-    # import raw data and get window slides
-    def getKinematicData(self, url):
-        dataX = np.zeros ((0, 4, 10))
-        dataX = dataX.tolist()
-        dataY = np.zeros ((0, 1))
+    def getKinematicData(  # noqa: N802 – kept for backward compat
+        self, url: str | Path
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Load kinematic files, compute features, and return data/label arrays.
 
-        print ("loading data from url:\t", str (url))
-        filelist = glob.glob (url + "\*.txt")  # return a list of all txt files in the directory
-        for file in filelist:
-            file_name = os.path.basename(file)  # 'Needle_Passing_H004.txt'
-            surgery_name = os.path.splitext(file_name)[0]  # 'Needle_Passing_H004'
+        Args:
+            url: Directory containing per-trial ``.txt`` kinematic files.
+
+        Returns:
+            A 2-tuple ``(dataX, dataY)`` where *dataX* has shape
+            ``(n_trials, 4, 10)`` and *dataY* has shape ``(n_trials, 1)``.
+        """
+        data_x: list = []
+        data_y = np.zeros((0, 1))
+
+        print(f"loading data from url:\t{url}")
+        for file in sorted(Path(url).glob("*.txt")):
+            surgery_name = file.stem
             y = self.getSkillLevel(surgery_name)
             if y is None:
                 continue
 
-            # reading kinematic data from a file
-            x = np.genfromtxt (file, delimiter='', dtype=np.float32)
+            x = np.genfromtxt(str(file), delimiter="", dtype=np.float32)
 
-           # caculating global movement features
-           
-            x_calculate = DataCal()
-        
-            x_calculate.getFile(x,'MTF_L')
-            feature_MTF_L= x_calculate.cal_processing()
-            x_calculate.getFile(x,'MTF_R')
-            feature_MTF_R= x_calculate.cal_processing()
-            x_calculate.getFile(x,'PSM_1')
-            feature_PSM_1= x_calculate.cal_processing()
-            x_calculate.getFile(x,'PSM_2')
-            feature_PSM_2= x_calculate.cal_processing()
+            calculator = DataCal()
+            calculator.getFile(x, "MTF_L")
+            feature_mtf_l = calculator.cal_processing()
+            calculator.getFile(x, "MTF_R")
+            feature_mtf_r = calculator.cal_processing()
+            calculator.getFile(x, "PSM_1")
+            feature_psm_1 = calculator.cal_processing()
+            calculator.getFile(x, "PSM_2")
+            feature_psm_2 = calculator.cal_processing()
 
-            feature=np.vstack ((feature_MTF_L,feature_MTF_R,feature_PSM_1,feature_PSM_2))
-            
-            feature=feature.tolist()
-            dataX.append(feature)
-            dataY = np.vstack ((dataY, y))
-            
-        dataX=np.array(dataX)
-        return dataX, dataY
+            feature = np.vstack((feature_mtf_l, feature_mtf_r, feature_psm_1, feature_psm_2))
+            data_x.append(feature.tolist())
+            data_y = np.vstack((data_y, y))
+
+        return np.array(data_x), data_y

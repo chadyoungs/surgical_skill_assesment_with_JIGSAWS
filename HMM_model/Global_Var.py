@@ -1,8 +1,10 @@
-# 0 for Suturing, 1 for Knot Tying, 2 for Needle Passing
-TASK_SYMBOL = 0
+"""Global configuration constants for the HMM model."""
 
-CLUSTERS = 64
-N_CLUSTERS = CLUSTERS
+# 0 for Suturing, 1 for Knot_Tying, 2 for Needle_Passing
+TASK_SYMBOL: int = 0
 
-# for PCA in [hmm_model_o.py] and [train_observations.py]
-PCA_COMPONENTS = 4
+# Number of K-means clusters used for observation quantisation
+CLUSTERS: int = 64
+
+# Number of PCA components used in hmm_model_o.py and train_observations.py
+PCA_COMPONENTS: int = 4

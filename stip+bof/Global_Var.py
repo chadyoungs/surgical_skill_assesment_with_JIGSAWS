@@ -1,19 +1,16 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Oct 11 17:59:49 2020
-@author: xiaoxiaoyang
-"""
-# global variable
-# 0 for Suturing, 1 for Knot Tying, 2 for Need Passing
-TASK_SYMBOL_Global = 0
+"""Global configuration constants for the STIP + BoF pipeline."""
 
-# in clustering.py
-# for both HOG and HOF
-CLUSTERS = 400
-SELECTED_FEATURES_No = 100000
+# 0 for Suturing, 1 for Knot_Tying, 2 for Needle_Passing
+TASK_SYMBOL: int = 0
 
-# in feature_processing.py
-EXPAND_RADIUS = 5
-REMOVE_WINDOW_SIZE = 6
-SAMPLE_RATE = 2
-PADDING_SAMPLES = 20
+# Number of K-means clusters used for the BoF vocabulary (HOG and HOF)
+CLUSTERS: int = 400
+
+# Maximum number of STIP feature samples used during vocabulary training
+SELECTED_FEATURES_NO: int = 100000
+
+# Feature-processing parameters
+EXPAND_RADIUS: int = 5
+REMOVE_WINDOW_SIZE: int = 6
+SAMPLE_RATE: int = 2
+PADDING_SAMPLES: int = 20

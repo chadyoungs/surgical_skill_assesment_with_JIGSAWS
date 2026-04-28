@@ -1,19 +1,17 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Oct 15 16:55:25 2020
-@author: xiaoxiaoyang
-"""
+#!/usr/bin/env python3
+"""Resize the stitched trajectory image for display purposes."""
+from __future__ import annotations
 
-import os
 from PIL import Image
- 
-# 640*480
-IMG_HEIGHT = 1200
-IMG_WIDTH = 3600
 
-TARGET_HEIGHT = 120
-TARGET_WIDTH = 360
-
-out = Image.open('image_stitch.jpg').resize((TARGET_WIDTH, TARGET_HEIGHT)).save('image_stitch.jpg')
+TARGET_WIDTH: int = 360
+TARGET_HEIGHT: int = 120
+INPUT_FILE: str = "image_stitch.jpg"
 
 
+def main() -> None:
+    Image.open(INPUT_FILE).resize((TARGET_WIDTH, TARGET_HEIGHT)).save(INPUT_FILE)
+
+
+if __name__ == "__main__":
+    main()
