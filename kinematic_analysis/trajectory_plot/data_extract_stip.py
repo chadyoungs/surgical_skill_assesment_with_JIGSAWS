@@ -127,9 +127,15 @@ class DataExtract:
             score_list.append(surgery_score)
             self.metaData_score[surgery_name] = (surgery_score, self.skill_level(surgery_name, surgery_score))
 
-        score_list_sorted = sorted(score_list)
-        max_idx = score_list.index(score_list_sorted[-1])
-        min_idx = score_list.index(score_list_sorted[0])
+        # Use max/min score to find trial names; enumerate preserves correct
+        # index even when duplicate scores exist (first highest/lowest is returned).
+        max_idx, min_idx = 0, 0
+        max_score, min_score = score_list[0], score_list[0]
+        for i, s in enumerate(score_list):
+            if s > max_score:
+                max_score, max_idx = s, i
+            if s < min_score:
+                min_score, min_idx = s, i
         return surgery_list[max_idx], surgery_list[min_idx]
 
     def skill_level(self, surgery_name: str, score: int) -> int:

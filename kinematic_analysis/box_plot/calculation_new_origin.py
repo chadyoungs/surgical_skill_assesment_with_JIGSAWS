@@ -78,7 +78,7 @@ class DataCal:
             if (abs(p_var_x[i]) > _MOTION_THRESHOLD
                     and abs(p_var_y[i]) > _MOTION_THRESHOLD
                     and abs(p_var_z[i]) > _MOTION_THRESHOLD):
-                self.move_stop_moment = (n_steps + 1) + i - 1
+                self.move_stop_moment = n_steps + i
                 self.move_stop_time = self.move_stop_moment * _TIMESTAMP
                 break
 
