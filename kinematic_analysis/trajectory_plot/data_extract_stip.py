@@ -1,301 +1,198 @@
 #! /usr/bin/env python3
-'''
-Created on Mon Jul 20 17:29:20 2020
-@author: xiaoxiaoyang
+"""
+Data extraction utilities for trajectory-plotting scripts.
 
-for stip code
-'''
+Reads JIGSAWS metadata (scores, transcriptions, train/test splits) and
+exposes per-trial skill labels and index lookups.
+"""
+from __future__ import annotations
+
+from pathlib import Path
 from glob import glob
 
-task_list = ['Suturing', 'Knot_Tying', 'Needle_Passing']
+# ---------------------------------------------------------------------------
+# Path configuration
+# ---------------------------------------------------------------------------
 
-# 0 for suturing
-TASK_SYMBOL = 0
-    
-# remind that the root_path must point to SuperTrialOut folder!!!
-root_path = r'.\Experimental_setup\{}\unBalanced\SkillDetection\SuperTrialOut'.format(task_list[TASK_SYMBOL])
-root_path_score = r'.\da_vici_data_with_iDT_features\{}'.format(task_list[TASK_SYMBOL])
-root_path_trans = r'.\da_vici_data_with_iDT_features\{}\transcriptions'.format(task_list[TASK_SYMBOL])
+TASK_LIST: list[str] = ["Suturing", "Knot_Tying", "Needle_Passing"]
 
-class DataExtract(object):
-    def __init__(self):
-        self.metaData = {}
-        self.metaData_surgeme = {}
-        self.metaData_score = {}
-        self.metaData_index = {}
-        self.metaData_hmmstates = {}
-        self.metaData_hmmindex = {}
-    
-    def get_category(self):
-         #retrieves directories inside root path
-        self.category = glob(root_path + "/" + "*")
-        # eliminate absolute path
-        self.category_abs = [i.split("\\")[-1] for i in self.category]
-    
-    def get_frame_surgeme(self):
-        txt_files = glob(root_path_trans + "\*.txt")
-        for file in txt_files:
-            list_surgeme = []
-            list_frameStartNo = []
-            list_frameEndNo = []
-            
-            temp_0 = file.split("\\")[-1]
-            surgery_name = temp_0.split('.')[0]
-            for line in open(file, 'r'):
+# 0 for Suturing, 1 for Knot_Tying, 2 for Needle_Passing
+TASK_SYMBOL: int = 0
+TASK: str = TASK_LIST[TASK_SYMBOL]
+
+_BASE = Path(".")
+root_path: str = str(
+    _BASE / "Experimental_setup" / TASK / "unBalanced" / "SkillDetection" / "SuperTrialOut"
+)
+root_path_score: str = str(_BASE / "da_vici_data_with_iDT_features" / TASK)
+root_path_trans: str = str(_BASE / "da_vici_data_with_iDT_features" / TASK / "transcriptions")
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _surgery_name_from_stem(stem: str) -> str:
+    """Extract surgery name by dropping the last two ``_``-separated tokens."""
+    return "_".join(stem.split("_")[:-2])
+
+
+# ---------------------------------------------------------------------------
+# DataExtract class
+# ---------------------------------------------------------------------------
+
+class DataExtract:
+    """Extract JIGSAWS metadata for trajectory plotting and HMM evaluation."""
+
+    def __init__(self) -> None:
+        self.metaData: dict = {}
+        self.metaData_surgeme: dict = {}
+        self.metaData_score: dict = {}
+        self.metaData_index: dict = {}
+        self.metaData_hmmstates: dict = {}
+        self.metaData_hmmindex: dict = {}
+
+    def get_category(self) -> None:
+        """Retrieve subdirectories inside *root_path* (one per LOSO fold)."""
+        self.category: list[str] = glob(root_path + "/*")
+        self.category_abs: list[str] = [Path(p).name for p in self.category]
+
+    def get_frame_surgeme(self) -> None:
+        """Parse transcription files and populate ``metaData_surgeme``."""
+        for txt_file in Path(root_path_trans).glob("*.txt"):
+            surgery_name = txt_file.stem
+            list_surgeme: list[str] = []
+            list_frame_start: list[str] = []
+            list_frame_end: list[str] = []
+
+            for line in txt_file.read_text().splitlines():
                 line = line.strip()
-                if len(line) == 0:
+                if not line:
                     break
-                
-                start_frame_No = line.split()[0]
-                list_frameStartNo.append(start_frame_No)
-                end_frame_No = line.split()[1]
-                list_frameEndNo.append(end_frame_No)
-                surgeme = line.split()[2]
-                list_surgeme.append(surgeme)
-                
-            self.metaData_surgeme[surgery_name] = (list_frameStartNo, list_frameEndNo, list_surgeme)
-            
-    def get_hmm_states(self):
-        txt_files = glob(root_path_trans + "\*.txt")
-        for file in txt_files:
-            temp_0 = file.split("\\")[-1]
-            surgery_name = temp_0.split('.')[0]
-        
-            for i in range(int(self.metaData_surgeme[surgery_name][1][-1])):
-                
-                frame_No = i + 1
-                length = len(self.metaData_surgeme[surgery_name][0])
-                for j in range(length):
+                parts = line.split()
+                list_frame_start.append(parts[0])
+                list_frame_end.append(parts[1])
+                list_surgeme.append(parts[2])
 
-                    if frame_No >= int(self.metaData_surgeme[surgery_name][0][j]) and frame_No <= int(self.metaData_surgeme[surgery_name][1][j]):
-                        #print(frame_No, j)
-                        self.metaData_hmmstates[frame_No] = self.metaData_surgeme[surgery_name][2][j]
-                             
-    # each file's starting and endding frame No.
-    def get_frame_No(self):
-        for count, c in enumerate(self.category):
-            # actually there is only one file under the category, we applied "for" for reusing
-            txt_files = glob(c + "\itr_1" + "\*.txt" )
-            
+            self.metaData_surgeme[surgery_name] = (list_frame_start, list_frame_end, list_surgeme)
+
+    def get_hmm_states(self) -> None:
+        """Build a per-frame HMM state map into ``metaData_hmmstates``."""
+        for txt_file in Path(root_path_trans).glob("*.txt"):
+            surgery_name = txt_file.stem
+            starts, ends, surgemes = self.metaData_surgeme[surgery_name]
+            for i in range(int(ends[-1])):
+                frame_no = i + 1
+                for j in range(len(starts)):
+                    if int(starts[j]) <= frame_no <= int(ends[j]):
+                        self.metaData_hmmstates[frame_no] = surgemes[j]
+
+    def get_frame_No(self) -> None:  # noqa: N802 – kept for backward compat
+        """Populate ``metaData`` with ``(start_frame, end_frame)`` per trial."""
+        for count, category_dir in enumerate(self.category):
+            txt_files = glob(str(Path(category_dir) / "itr_1" / "*.txt"))
             if count >= 1:
                 break
-            
             for file in txt_files:
-                for line in open(file, 'r'):
-                    line = line.strip()
-                    if len(line) == 0:
-                        break
-                    # b = line.split()
-                    # surgery_name_and_No = b[0]
-                    # surgery_score_sum = int(b[1])
-                    
-                    c = line.split('.')
-                
-                    start_frame_No = int(c[0].split('_')[-2])
-                    end_frame_No = int(c[0].split('_')[-1])
-                    
-                    c_temp = c[0].split('_')
-                    list.reverse(c_temp)
-                    c_temp_1 = [x+"_"  for x in c_temp[2:]]
-                    list.reverse(c_temp_1)
-                    
-                    surgery_name = "".join(c_temp_1)[:-1] 
-                    #scores_grade = self.skill_level(surgery_name, surgery_score_sum)
-                
-                    self.metaData[surgery_name] = (start_frame_No, end_frame_No)
-    
-    # each file's score
-    def get_score(self):
-        category = root_path_score.split("\\")[-1]
-        txt_file = root_path_score + "\meta_file_" + category +".txt"
-        
-        score_list = []
-        surgery_list = []
-        for line in open(txt_file, 'r'):
-            line = line.strip()
-            if len(line) == 0:
-                break
-            b = line.split()
-            surgery_name = b[0]
-            surgery_score_sum = int(b[2])
-            
-            surgery_list.append(surgery_name)
-            score_list.append(surgery_score_sum)
-                    
-            scores_grade = self.skill_level(surgery_name, surgery_score_sum)
-                
-            self.metaData_score[surgery_name] = (surgery_score_sum, scores_grade)
-    
-         # for stip, as we need two expert trials for clustering
-        score_list_sorted = sorted(score_list) 
-        max_1 = score_list_sorted[-1]
-        max_2 = score_list_sorted[-2]
-        max_1_index = score_list.index(max_1)
-        max_2_index = score_list.index(max_2)
-        
-        max_1_surgery = surgery_list[max_1_index]
-        max_2_surgery = surgery_list[max_2_index]
+                with open(file) as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            break
+                        stem = line.split(".")[0]
+                        parts = stem.split("_")
+                        start_frame = int(parts[-2])
+                        end_frame = int(parts[-1])
+                        self.metaData[_surgery_name_from_stem(stem)] = (start_frame, end_frame)
 
-        # for plotting, we need the best and worst trials
-        max_score = score_list_sorted[-1]
-        min_score = score_list_sorted[0]
-        
-        max_surgery = surgery_list[max_score]
-        min_surgery = surgery_list[min_score]
-        
-        #return (max_1_surgery,max_2_surgery)
-        return max_surgery, min_surgery
-         
-    
-    def skill_level(self, surgery_name, score):
-        if surgery_name.__contains__('Knot_Tying'):
-            if score <= 15:
-                y = 0 # novice
-            else:
-                y = 2 # expert
-                    
-        elif surgery_name.__contains__('Suturing'):
-            if score <= 19:
-                y = 0 # novice
-            else:
-                y = 2 # expert
-                
-        elif surgery_name.__contains__('Needle_Passing'):
-            if score <= 15:
-                y = 0 # novice
-            else:
-                y = 2 # expert
-        
-        return y
-    
-    def skill_level_t(self, surgery_name, score):
-        if surgery_name.__contains__('Knot_Tying'):
-            if score <= 15:
-                y = 0 # novice
-            else:
-                y = 2 # expert
-                    
-        elif surgery_name.__contains__('Suturing'):
-            if score <= 19:
-                y = 0 # novice
-            else:
-                y = 2 # expert
-                
-        elif surgery_name.__contains__('Needle_Passing'):
-            if score <= 15:
-                y = 0 # novice
-            else:
-                y = 2 # expert
-        
-        return y
-    
-    # only for HMM test process
-    def get_index(self):
-        '''get the index of  train/test set'''
-        category = root_path_score.split("\\")[-1]
-        txt_file = root_path_score + "\meta_file_" + category +".txt"
-        
-        count = 0
-        novice_list = []
-        expert_list = []
-        for line in open(txt_file, 'r'):
+    def get_score(self) -> tuple[str, str]:
+        """Parse the meta-file, populate ``metaData_score``, and return the
+        names of the highest- and lowest-scoring trials.
+
+        Returns:
+            A 2-tuple ``(best_trial_name, worst_trial_name)``.
+        """
+        meta_file = Path(root_path_score) / f"meta_file_{TASK}.txt"
+        score_list: list[int] = []
+        surgery_list: list[str] = []
+
+        for line in meta_file.read_text().splitlines():
             line = line.strip()
-            if len(line) == 0:
+            if not line:
                 break
-            b = line.split()
-            surgery_name = b[0]
-            
+            parts = line.split()
+            surgery_name = parts[0]
+            surgery_score = int(parts[2])
+            surgery_list.append(surgery_name)
+            score_list.append(surgery_score)
+            self.metaData_score[surgery_name] = (surgery_score, self.skill_level(surgery_name, surgery_score))
+
+        # Use max/min score to find trial names; enumerate preserves correct
+        # index even when duplicate scores exist (first highest/lowest is returned).
+        max_idx, min_idx = 0, 0
+        max_score, min_score = score_list[0], score_list[0]
+        for i, s in enumerate(score_list):
+            if s > max_score:
+                max_score, max_idx = s, i
+            if s < min_score:
+                min_score, min_idx = s, i
+        return surgery_list[max_idx], surgery_list[min_idx]
+
+    def skill_level(self, surgery_name: str, score: int) -> int:
+        """Return ``0`` (novice) or ``2`` (expert) for *surgery_name*."""
+        if "Knot_Tying" in surgery_name or "Needle_Passing" in surgery_name:
+            return 0 if score <= 15 else 2
+        return 0 if score <= 19 else 2
+
+    def get_index(self) -> None:
+        """Populate ``metaData_hmmindex`` with novice/expert index lists."""
+        meta_file = Path(root_path_score) / f"meta_file_{TASK}.txt"
+        novice_list: list[int] = []
+        expert_list: list[int] = []
+        for count, line in enumerate(meta_file.read_text().splitlines()):
+            line = line.strip()
+            if not line:
+                break
+            surgery_name = line.split()[0]
             if self.metaData_score[surgery_name][1] == 0:
                 novice_list.append(count)
             else:
                 expert_list.append(count)
-            
-            count += 1
-            
         self.metaData_hmmindex["novice"] = novice_list
         self.metaData_hmmindex["expert"] = expert_list
-        #print(self.metaData_hmmindex["novice"])
-        #print(self.metaData_hmmindex["expert"])
-                
-    # only for ML train and test process
-    def get_txt_index(self):
-        count = 0
-        category = root_path_score.split("\\")[-1]
-        txt_file = root_path_score + "\meta_file_" + category +".txt"
-        
-        for line in open(txt_file, 'r'):
+
+    def get_txt_index(self) -> None:
+        """Populate ``metaData_index`` mapping surgery name → row index."""
+        meta_file = Path(root_path_score) / f"meta_file_{TASK}.txt"
+        for count, line in enumerate(meta_file.read_text().splitlines()):
             line = line.strip()
-            if len(line) == 0:
+            if not line:
                 break
-            b = line.split()
-            surgery_name = b[0]
-                
-            self.metaData_index[surgery_name] = count
-            count += 1
-    
-    # ML train list depends on LOSO        
-    def train_sum(self):
-        txt_files_train_names = []
-        
-        for c in self.category:
-            # actually there is only one file under the category, we applied "for" for reusing
-            txt_files_train = c + "\itr_1\Train.txt"
-            txt_files_train_name = []
-            
-            with open(txt_files_train, 'r') as f:
-                for line in f:
-                    data = line.split()
-                    
-                    temp = data[0].split('_')
-                    list.reverse(temp)
-                    temp_1 = [x+"_"  for x in temp[2:]]
-                    list.reverse(temp_1)
-                    train_file_name = "".join(temp_1)[:-1]
-                    
-                    txt_files_train_name.append(train_file_name)
-                
-            txt_files_train_names.append(txt_files_train_name)
-            
-        return txt_files_train_names    
-    
-    # ML test list depends on LOSO 
-    def test_sum(self):
-        txt_files_test_names = []
-        
-        for c in self.category:
-            # actually there is only one file under the category, we applied "for" for reusing
-            txt_files_test = c + "\itr_1\Test.txt"
-            txt_files_test_name = []
-            
-            with open(txt_files_test, 'r') as f:
-                for line in f:
-                    data = line.split()
-                    
-                    temp = data[0].split('_')
-                    list.reverse(temp)
-                    temp_1 = [x+"_"  for x in temp[2:]]
-                    list.reverse(temp_1)
-                    test_file_name = "".join(temp_1)[:-1]
-                    
-                    txt_files_test_name.append(test_file_name)
-                
-            txt_files_test_names.append(txt_files_test_name)
-        return txt_files_test_names
-    
-    def print_test(self):
-        '''for test'''
-        print(self.metaData["Suturing_E004"][0])
-    
-'''
-# for test
-if __name__ == "__main__":
-    test = DataExtract()
-    test.get_category()
-    test.get_frame_No()
-    test.get_score()
-    #test.print_test()
-    test.test_sum()
-    test.get_frame_surgeme()
-    test.get_hmm_states()
-    test.get_index()
-'''
+            self.metaData_index[line.split()[0]] = count
+
+    def _read_split_file(self, split_file: str) -> list[str]:
+        """Parse a split file and return unique surgery names in order."""
+        seen: set[str] = set()
+        names: list[str] = []
+        with open(split_file) as f:
+            for line in f:
+                stem = line.split()[0]
+                name = _surgery_name_from_stem(stem)
+                if name not in seen:
+                    seen.add(name)
+                    names.append(name)
+        return names
+
+    def train_sum(self) -> list[list[str]]:
+        """Return per-fold lists of training surgery names (LOSO)."""
+        return [
+            self._read_split_file(str(Path(c) / "itr_1" / "Train.txt"))
+            for c in self.category
+        ]
+
+    def test_sum(self) -> list[list[str]]:
+        """Return per-fold lists of test surgery names (LOSO)."""
+        return [
+            self._read_split_file(str(Path(c) / "itr_1" / "Test.txt"))
+            for c in self.category
+        ]

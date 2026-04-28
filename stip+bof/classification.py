@@ -1,165 +1,237 @@
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 """
-Created on Mon Oct 12 11:22:57 2020
-@author: xiaoxiaoyang
+STIP + BoF Step 3 – Classification.
 
-This code was inspired by <<Towards automatic skill evaluation: Detection and segmentation
-                     of robot-assisted surgical motions>>
-!!!
-!!!Notice this method is not done in real time but in post analysis
-!!!
-Step 1 (Clustering): BoF, we obtain features for each of 5 train sets
-Step 2 (Feature Engineering): Feature Extraction, Though STIP contains temporal information,
-                              we still add STIPs of sevral frames pre- or process- in current 
-                              frame, for the reason of surgical gesture last for seconds in 
-                              surgery;
-                              Feature Normalization(L2, for now);
-Step 3 (Classification):SVM and kNN and Bayes
-Step 4 (Sliding)
+Loads pre-computed BoF histogram vectors and trains/evaluates SVM classifiers
+for each LOSO fold, performing a grid search over C and gamma.
 
-This script mainly complete Step 3
+Pipeline overview
+-----------------
+Step 1 (clustering.py): BoF vocabulary training and histogram prediction.
+Step 2 (feature_processing.py): Feature extraction and normalisation.
+Step 3 (this script): SVM / kNN / Bayes classification.
+Step 4: Sliding-window evaluation.
+
+Note: This method is post-hoc analysis, not real-time.
 """
+from __future__ import annotations
 
-import numpy as np
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, Normalizer
+from pathlib import Path
 
-from sklearn.svm import SVC
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.model_selection import GridSearchCV
-
-from sklearn.metrics import f1_score
 import joblib
+import numpy as np
+from sklearn.svm import SVC
 
-from data_extract_stip import DataExtract
 import Global_Var
+from data_extract_stip import DataExtract
 
-import matplotlib.pyplot as plt
 
-# 0 for Suturing
-TASK_SYMBOL = Global_Var.TASK_SYMBOL_Global
-task_list = ["Suturing", "Knot_Tying", "Needle_Passing"]
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
 
-N_CLUSTERS = Global_Var.CLUSTERS
+TASK_LIST: list[str] = ["Suturing", "Knot_Tying", "Needle_Passing"]
+TASK_SYMBOL: int = Global_Var.TASK_SYMBOL
+N_CLUSTERS: int = Global_Var.CLUSTERS
 
-test = DataExtract()
-test.get_category()
-test.get_txt_index()  
-test.get_score()
+# SVM hyper-parameter search grid
+_GAMMA_VALUES: list[float] = [0.001, 0.01, 0.1, 1, 10, 100]
+_C_VALUES: list[float] = [0.001, 0.01, 0.1, 1, 10, 100]
 
-train_list = test.train_sum()
-test_list = test.test_sum()
 
-# saving paths
-time_series_hog = [[] for _ in range(len(train_list))]
-time_series_hof = [[] for _ in range(len(train_list))]
-#extract_labels = [[] for _ in range(len(train_list))]
-for i in range(len(train_list)):
-    time_series_hog[i] = joblib.load(r'.\time_series_data\{}\time_series_hog_set{}_{}.pkl'.format(task_list[TASK_SYMBOL], i+1, N_CLUSTERS))
-    time_series_hof[i] = joblib.load(r'.\time_series_data\{}\time_series_hof_set{}_{}.pkl'.format(task_list[TASK_SYMBOL], i+1, N_CLUSTERS))
-    #extract_labels[i] = joblib.load(r'.\time_series_data\{}\time_series_surgery_name_set{}_{}.pkl'.format(task_list[TASK_SYMBOL], i+1, N_CLUSTERS))
-    
-train_txt_No_sum = []
-# extract the index for every classifier
-for i in train_list:
-    train_txt_No = []
-    for j in i:
-        train_txt_No_item = test.metaData_index[j]
-        train_txt_No.append(train_txt_No_item)
-    train_txt_No_sorted = sorted(train_txt_No)
-    train_txt_No_sum.append(train_txt_No_sorted)
+# ---------------------------------------------------------------------------
+# Data preparation helpers
+# ---------------------------------------------------------------------------
 
-test_txt_No_sum = []
-# extract the index for every classifier
-for i in test_list:
-    test_txt_No = []
-    for j in i:
-        test_txt_No_item = test.metaData_index[j]
-        test_txt_No.append(test_txt_No_item)
-    test_txt_No_sorted = sorted(test_txt_No)
-    test_txt_No_sum.append(test_txt_No_sorted)
+def _build_index_map(
+    extractor: DataExtract,
+    name_lists: list[list[str]],
+) -> list[list[int]]:
+    """Convert per-fold surgery-name lists to sorted index lists.
 
-# get the train set's data
-train_hist_vectors_hog = [[] for _ in range(5)]
-train_hist_vectors_hof = [[] for _ in range(5)]
-train_hist_vectors = [[] for _ in range(5)]
+    Args:
+        extractor: A populated :class:`DataExtract` instance.
+        name_lists: Per-fold lists of surgery names (from ``train_sum``/``test_sum``).
 
-# get the train set's data
-test_hist_vectors_hog = [[] for _ in range(5)]
-test_hist_vectors_hof = [[] for _ in range(5)]
-test_hist_vectors = [[] for _ in range(5)]
+    Returns:
+        Per-fold sorted lists of integer meta-data indices.
+    """
+    return [
+        sorted(extractor.metaData_index[name] for name in fold)
+        for fold in name_lists
+    ]
 
-for i in range(len(train_hist_vectors)):
-    train_hist_vectors_hog[i] = np.zeros((1, N_CLUSTERS))
-    train_hist_vectors_hof[i] = np.zeros((1, N_CLUSTERS))
-    for count, (j, k) in enumerate(zip(time_series_hog[i], time_series_hof[i])):
-        if count in train_txt_No_sum[i]:
-            j = np.reshape(j, (1, N_CLUSTERS))
-            k = np.reshape(k, (1, N_CLUSTERS))
-            train_hist_vectors_hog[i] = np.vstack((train_hist_vectors_hog[i], j))
-            train_hist_vectors_hof[i] = np.vstack((train_hist_vectors_hof[i], k))
-    train_hist_vectors_hog[i] = np.delete(train_hist_vectors_hog[i], 0, 0)
-    train_hist_vectors_hof[i] = np.delete(train_hist_vectors_hof[i], 0, 0)
-    
-    train_hist_vectors[i] = np.hstack((train_hist_vectors_hog[i], train_hist_vectors_hof[i]))
-    train_hist_vectors[i] = np.reshape(train_hist_vectors[i], (-1, 2*N_CLUSTERS))
-    #print(train_hist_vectors[i])
-    
-for i in range(len(test_hist_vectors)):
-    test_hist_vectors_hog[i] = np.zeros(N_CLUSTERS)
-    test_hist_vectors_hof[i] = np.zeros(N_CLUSTERS)
-    for count, (j, k) in enumerate(zip(time_series_hog[i], time_series_hof[i])):
-        if count in test_txt_No_sum[i]:
-            j = np.reshape(j, (1, N_CLUSTERS))
-            k = np.reshape(k, (1, N_CLUSTERS))
-            test_hist_vectors_hog[i] = np.vstack((test_hist_vectors_hog[i], j))
-            test_hist_vectors_hof[i] = np.vstack((test_hist_vectors_hof[i], k))
-    test_hist_vectors_hog[i] = np.delete(test_hist_vectors_hog[i], 0, 0)
-    test_hist_vectors_hof[i] = np.delete(test_hist_vectors_hof[i], 0, 0)
-    test_hist_vectors[i] = np.hstack((test_hist_vectors_hog[i], test_hist_vectors_hof[i]))
-    test_hist_vectors[i] = np.reshape(test_hist_vectors[i], (-1, 2*N_CLUSTERS))
-    #print(test_hist_vectors[i])
-    
-# get the train set's target   
-train_targets = [[] for _ in range(5)]
 
-# get the train set's target        
-test_targets = [[] for _ in range(5)]
+def _index_to_name(extractor: DataExtract) -> dict[int, str]:
+    """Build a reverse mapping from meta-data index → surgery name."""
+    return {v: k for k, v in extractor.metaData_index.items()}
 
-for i in range(len(train_targets)):
-    for j in train_txt_No_sum[i]:
-        if j in test.metaData_index.values():
-            name_no_property = list(test.metaData_index.keys())[list(test.metaData_index.values()).index(j)]
-            label = test.metaData_score[name_no_property][1]
-            train_targets[i].append(label)
 
-for i in range(len(test_targets)):
-    for j in test_txt_No_sum[i]:
-        if j in test.metaData_index.values():
-            name_no_property = list(test.metaData_index.keys())[list(test.metaData_index.values()).index(j)]
-            label = test.metaData_score[name_no_property][1]
-            test_targets[i].append(label)
+def _collect_vectors(
+    time_series: list[list[np.ndarray]],
+    index_lists: list[list[int]],
+    n_clusters: int,
+) -> list[np.ndarray]:
+    """Stack BoF vectors for the requested indices in each fold.
 
-print("Start to classify the histogram")
+    Args:
+        time_series: Per-fold lists of histogram vectors (shape ``(n_clusters,)``).
+        index_lists: Per-fold sorted lists of integer indices into *time_series*.
+        n_clusters: Histogram dimensionality.
 
-# SVM method
-best_score = 0
-for gamma in [0.001, 0.01, 0.1, 1, 10, 100]:
-    for C in [0.001, 0.01, 0.1, 1, 10, 100]:
-        sum_score = 0
-        for i in range(len(train_hist_vectors)):
-            svm = SVC(gamma=gamma, C=C)
-            svm.fit(train_hist_vectors[i], train_targets[i])
-            score = svm.score(test_hist_vectors[i], test_targets[i])
-            sum_score += score
-        print("gamma: {} and C: {}".format(gamma, C))
-        print("average score for current parameters: {:.4f}".format(sum_score/len(train_hist_vectors)))
-        if sum_score > best_score:
-            best_score = sum_score
-            best_parameters = {'C':C, 'gamma':gamma}
-            
-print("best score: {:.4f}".format(best_score))
-print("best parameters: {}".format(best_parameters))
-print("Test set average score for 5 sets: {:.4f}".format(best_score/len(train_hist_vectors))) 
+    Returns:
+        Per-fold arrays of shape ``(n_selected, n_clusters)``.
+    """
+    result: list[np.ndarray] = []
+    for fold_idx, indices in enumerate(index_lists):
+        fold_vectors = np.zeros((1, n_clusters))
+        for i, (hog, hof) in enumerate(
+            zip(time_series[0][fold_idx], time_series[1][fold_idx])
+        ):
+            if i in indices:
+                fold_vectors = np.vstack((fold_vectors, np.reshape(hog, (1, n_clusters))))
+        fold_vectors = np.delete(fold_vectors, 0, axis=0)
+        result.append(np.reshape(fold_vectors, (-1, n_clusters)))
+    return result
 
+
+def _collect_targets(
+    extractor: DataExtract,
+    idx_to_name: dict[int, str],
+    index_lists: list[list[int]],
+) -> list[list[int]]:
+    """Build per-fold target label lists.
+
+    Args:
+        extractor: A populated :class:`DataExtract` instance.
+        idx_to_name: Reverse index→surgery-name mapping.
+        index_lists: Per-fold sorted lists of integer meta-data indices.
+
+    Returns:
+        Per-fold lists of integer skill labels (0 = novice, 2 = expert).
+    """
+    return [
+        [extractor.metaData_score[idx_to_name[j]][1] for j in fold if j in idx_to_name]
+        for fold in index_lists
+    ]
+
+
+# ---------------------------------------------------------------------------
+# SVM grid search
+# ---------------------------------------------------------------------------
+
+def svm_grid_search(
+    train_vectors: list[np.ndarray],
+    test_vectors: list[np.ndarray],
+    train_targets: list[list[int]],
+    test_targets: list[list[int]],
+) -> tuple[float, dict]:
+    """Run a C × gamma grid search and return the best average score.
+
+    Args:
+        train_vectors: Per-fold training feature matrices.
+        test_vectors: Per-fold test feature matrices.
+        train_targets: Per-fold training labels.
+        test_targets: Per-fold test labels.
+
+    Returns:
+        A 2-tuple ``(best_score, best_parameters)`` where *best_score* is the
+        **sum** of per-fold scores (not the average) for the best parameter
+        combination, and *best_parameters* is ``{'C': ..., 'gamma': ...}``.
+    """
+    best_score: float = 0.0
+    best_parameters: dict = {}
+
+    for gamma in _GAMMA_VALUES:
+        for C in _C_VALUES:
+            fold_score_sum = sum(
+                SVC(gamma=gamma, C=C).fit(train_vectors[i], train_targets[i]).score(
+                    test_vectors[i], test_targets[i]
+                )
+                for i in range(len(train_vectors))
+            )
+            print(f"gamma: {gamma} and C: {C}")
+            print(f"average score for current parameters: {fold_score_sum / len(train_vectors):.4f}")
+            if fold_score_sum > best_score:
+                best_score = fold_score_sum
+                best_parameters = {"C": C, "gamma": gamma}
+
+    return best_score, best_parameters
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    """Load BoF histograms, run SVM grid search, and print results."""
+    task = TASK_LIST[TASK_SYMBOL]
+    time_series_dir = Path(".") / "time_series_data" / task
+
+    extractor = DataExtract()
+    extractor.get_category()
+    extractor.get_txt_index()
+    extractor.get_score()
+
+    train_list = extractor.train_sum()
+    test_list = extractor.test_sum()
+    n_folds = len(train_list)
+
+    # Load pre-computed BoF histograms for each fold
+    time_series_hog: list[list[np.ndarray]] = []
+    time_series_hof: list[list[np.ndarray]] = []
+    for i in range(n_folds):
+        hog_path = time_series_dir / f"time_series_hog_set{i + 1}_{N_CLUSTERS}.pkl"
+        hof_path = time_series_dir / f"time_series_hof_set{i + 1}_{N_CLUSTERS}.pkl"
+        time_series_hog.append(joblib.load(hog_path))
+        time_series_hof.append(joblib.load(hof_path))
+
+    train_indices = _build_index_map(extractor, train_list)
+    test_indices = _build_index_map(extractor, test_list)
+    idx_to_name = _index_to_name(extractor)
+
+    # Build feature matrices
+    train_hog_vectors: list[np.ndarray] = []
+    train_hof_vectors: list[np.ndarray] = []
+    test_hog_vectors: list[np.ndarray] = []
+    test_hof_vectors: list[np.ndarray] = []
+
+    for fold_idx in range(n_folds):
+        train_hog = np.zeros((1, N_CLUSTERS))
+        train_hof = np.zeros((1, N_CLUSTERS))
+        test_hog = np.zeros(N_CLUSTERS)
+        test_hof = np.zeros(N_CLUSTERS)
+
+        for count, (hog, hof) in enumerate(zip(time_series_hog[fold_idx], time_series_hof[fold_idx])):
+            hog_row = np.reshape(hog, (1, N_CLUSTERS))
+            hof_row = np.reshape(hof, (1, N_CLUSTERS))
+            if count in train_indices[fold_idx]:
+                train_hog = np.vstack((train_hog, hog_row))
+                train_hof = np.vstack((train_hof, hof_row))
+            if count in test_indices[fold_idx]:
+                test_hog = np.vstack((test_hog, hog_row))
+                test_hof = np.vstack((test_hof, hof_row))
+
+        train_hog = np.delete(train_hog, 0, axis=0)
+        train_hof = np.delete(train_hof, 0, axis=0)
+        test_hog = np.delete(test_hog, 0, axis=0)
+        test_hof = np.delete(test_hof, 0, axis=0)
+
+        train_hog_vectors.append(np.reshape(np.hstack((train_hog, train_hof)), (-1, 2 * N_CLUSTERS)))
+        test_hog_vectors.append(np.reshape(np.hstack((test_hog, test_hof)), (-1, 2 * N_CLUSTERS)))
+
+    train_targets = _collect_targets(extractor, idx_to_name, train_indices)
+    test_targets = _collect_targets(extractor, idx_to_name, test_indices)
+
+    print("Start to classify the histogram")
+    best_score, best_params = svm_grid_search(
+        train_hog_vectors, test_hog_vectors, train_targets, test_targets
+    )
+
+    print(f"best score: {best_score:.4f}")
+    print(f"best parameters: {best_params}")
+    print(f"Test set average score for {n_folds} sets: {best_score / n_folds:.4f}")
+
+
+if __name__ == "__main__":
+    main()
