@@ -17,7 +17,7 @@ class TimeSeriesData(object):
 
     def getMetaData(self):        
         count = 0
-        for file in glob.glob (self.file_name + '\meta_file_' + '*' + '.txt'):
+        for file in glob.glob(os.path.join(self.file_name, "meta_file_*.txt")):
             for line in open (file, 'r'):
                 line = line.strip ()
                 if len (line) == 0:
@@ -65,7 +65,7 @@ class TimeSeriesData(object):
         dataY = np.zeros ((0, 1))
 
         print ("loading data from url:\t", str (url))
-        filelist = glob.glob (url + "\*.txt")  # return a list of all txt files in the directory
+        filelist = glob.glob(os.path.join(url, "*.txt"))  # return a list of all txt files in the directory
         for file in filelist:
             file_name = os.path.basename(file)  # 'Needle_Passing_H004.txt'
             surgery_name = os.path.splitext(file_name)[0]  # 'Needle_Passing_H004'

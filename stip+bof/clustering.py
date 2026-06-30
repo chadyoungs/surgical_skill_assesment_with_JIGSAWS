@@ -20,6 +20,7 @@ Step 4 (Sliding)
 This script mainly complete Step 1
 """
 
+import os
 import Global_Var
 
 import joblib
@@ -33,7 +34,7 @@ import numpy as np
 import cv2
 
 def find_last_frame(videos_features_location):
-    videos_features = glob(videos_features_location + '\\*.txt')
+    videos_features = glob(os.path.join(videos_features_location, '*.txt'))
     for i in videos_features:
         data = np.loadtxt(i, dtype=float)
         lastframe = max(data[:, 6])
@@ -52,7 +53,7 @@ def find_last_frame(videos_features_location):
                     lastline_surgeryname[surgery_name] = lastframe
     
 def kmeans_predict(video_feature_name):
-    surgery_name = video_feature_name.split('\\')[-1].split('.')[0]
+    surgery_name = os.path.splitext(os.path.basename(video_feature_name))[0]
     #lastframe_No = int(lastline_surgeryname[surgery_name])
     #lastframe_No += 1
     
@@ -77,12 +78,12 @@ def kmeans_predict(video_feature_name):
     return surgery_name, result_hog, result_hof 
   
 def kmeans_data(video_feature_name):
-    videos_features = glob(videos_features_location + '\\*.txt')
+    videos_features = glob(os.path.join(videos_features_location, '*.txt'))
     if not len(videos_features):
         raise AssertionError
         
     for i in videos_features:
-        temp = i.split("\\")[-1].split('.')[0]
+        temp = os.path.splitext(os.path.basename(i))[0]
         if temp == video_feature_name:
             print(temp)
             raw_data = np.loadtxt(i, dtype=float)
@@ -120,14 +121,24 @@ if __name__ == '__main__':
     train_list = test.train_sum()
     test_list = test.test_sum()
     
-    videos_features_location = r'..\stip+dct_code\raw_data\{}'.format(task_list[TASK_SYMBOL])   
+    videos_features_location = os.path.join('..', 'stip+dct_code', 'raw_data', task_list[TASK_SYMBOL])
     
 #training process
     hog_repositories = [[] for _ in range(len(train_list))]
     hof_repositories = [[] for _ in range(len(train_list))]
     for i in range(len(train_list)):
-        hog_repositories[i] = r'.\\clusters\\{}\\clusters_{}_set{}_hog.pkl'.format(task_list[TASK_SYMBOL], N_CLUSTERS, i+1)
-        hof_repositories[i] = r'.\\clusters\\{}\\clusters_{}_set{}_hof.pkl'.format(task_list[TASK_SYMBOL], N_CLUSTERS, i+1)    
+        hog_repositories[i] = os.path.join(
+            '.',
+            'clusters',
+            task_list[TASK_SYMBOL],
+            'clusters_{}_set{}_hog.pkl'.format(N_CLUSTERS, i + 1),
+        )
+        hof_repositories[i] = os.path.join(
+            '.',
+            'clusters',
+            task_list[TASK_SYMBOL],
+            'clusters_{}_set{}_hof.pkl'.format(N_CLUSTERS, i + 1),
+        )
      
     for i in range(len(train_list)):
         HOG_vector = np.zeros(shape = (1, 72))
@@ -165,12 +176,37 @@ if __name__ == '__main__':
     repositories_1 = [[] for _ in range(len(train_list))]
     repositories_2 = [[] for _ in range(len(train_list))]
     for i in range(len(train_list)):
-        hog_clusters_locations[i] = r'.\clusters\{}\clusters_{}_set{}_hog.pkl'.format(task_list[TASK_SYMBOL], N_CLUSTERS, i+1)
-        hof_clusters_locations[i] = r'.\clusters\{}\clusters_{}_set{}_hof.pkl'.format(task_list[TASK_SYMBOL], N_CLUSTERS, i+1)
+        hog_clusters_locations[i] = os.path.join(
+            '.',
+            'clusters',
+            task_list[TASK_SYMBOL],
+            'clusters_{}_set{}_hog.pkl'.format(N_CLUSTERS, i + 1),
+        )
+        hof_clusters_locations[i] = os.path.join(
+            '.',
+            'clusters',
+            task_list[TASK_SYMBOL],
+            'clusters_{}_set{}_hof.pkl'.format(N_CLUSTERS, i + 1),
+        )
         
-        repositories_0[i] = r'.\time_series_data\{}\time_series_surgery_name_set{}_{}.pkl'.format(task_list[TASK_SYMBOL], i+1, N_CLUSTERS)
-        repositories_1[i] = r'.\time_series_data\{}\time_series_hog_set{}_{}.pkl'.format(task_list[TASK_SYMBOL], i+1, N_CLUSTERS)
-        repositories_2[i] = r'.\time_series_data\{}\time_series_hof_set{}_{}.pkl'.format(task_list[TASK_SYMBOL], i+1, N_CLUSTERS)
+        repositories_0[i] = os.path.join(
+            '.',
+            'time_series_data',
+            task_list[TASK_SYMBOL],
+            'time_series_surgery_name_set{}_{}.pkl'.format(i + 1, N_CLUSTERS),
+        )
+        repositories_1[i] = os.path.join(
+            '.',
+            'time_series_data',
+            task_list[TASK_SYMBOL],
+            'time_series_hog_set{}_{}.pkl'.format(i + 1, N_CLUSTERS),
+        )
+        repositories_2[i] = os.path.join(
+            '.',
+            'time_series_data',
+            task_list[TASK_SYMBOL],
+            'time_series_hof_set{}_{}.pkl'.format(i + 1, N_CLUSTERS),
+        )
     
     # obtain the max frame No. in data
     # the last line's frame No. is not always the maximum frame No.
@@ -182,7 +218,7 @@ if __name__ == '__main__':
     time_series_hog = [[] for _ in range(len(train_list))]
     time_series_hof = [[] for _ in range(len(train_list))]
     
-    videos_features = glob(videos_features_location + '\\*.txt')
+    videos_features = glob(os.path.join(videos_features_location, '*.txt'))
     for i in range(len(train_list)):
         for j in videos_features:
             #if i.split("\\")[-1] not in expert_video_features:

@@ -5,6 +5,8 @@ Created on Fri Sep 25 14:46:39 2020
 @author: xiaoxiaoyang
 """
 import os
+from pathlib import Path
+import sys
 
 import pandas as pd
 import numpy as np
@@ -19,13 +21,20 @@ from sklearn.preprocessing import MinMaxScaler
 
 from data_extract import DataExtract 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from runtime_config import TASKS, get_task_index
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+
 def load_data():
-    # 0 for Suturing
-    TASK_SYMBOL = 0
-    task_lists = ["Suturing", "Knot_Tying", "Needle_Passing"]
+    task_lists = list(TASKS)
+    task_symbol = get_task_index()
     
-    feature=np.load("{}_feature.npy".format(task_lists[TASK_SYMBOL]))
-    label=np.load("{}_grs.npy".format(task_lists[TASK_SYMBOL]))
+    feature = np.load(SCRIPT_DIR / "{}_feature.npy".format(task_lists[task_symbol]))
+    label = np.load(SCRIPT_DIR / "{}_grs.npy".format(task_lists[task_symbol]))
     
     # selct vel and smooth features
     feature_re=np.reshape(feature,(feature.shape[0],feature.shape[1]*feature.shape[2]))
@@ -89,7 +98,7 @@ if __name__ == "__main__":
     data_su, data_kt, data_np, data, label = load_data()
     
     # st 0 kt 1 np 2
-    SELECT_SYMBOL = 0
+    SELECT_SYMBOL = get_task_index()
     if SELECT_SYMBOL == 0:
         data_f = data_su
     elif SELECT_SYMBOL == 1:

@@ -1,11 +1,15 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Oct 11 17:59:49 2020
-@author: xiaoxiaoyang
-"""
+from pathlib import Path
+import sys
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from runtime_config import get_task_index
+
 # global variable
 # 0 for Suturing, 1 for Knot Tying, 2 for Need Passing
-TASK_SYMBOL_Global = 0
+TASK_SYMBOL_Global = get_task_index()
 
 # in clustering.py
 # for both HOG and HOF

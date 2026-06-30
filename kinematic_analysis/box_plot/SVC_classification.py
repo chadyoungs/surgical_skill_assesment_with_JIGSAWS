@@ -1,6 +1,8 @@
 #! /usr/bin/env python3
 
 import os
+from pathlib import Path
+import sys
 
 import pandas as pd
 import numpy as np
@@ -12,7 +14,13 @@ from sklearn.svm import SVC
 
 from sklearn.preprocessing import MinMaxScaler
 
-DATA_PATH = r"C:\Users\yangcheng\Desktop\box_plot_new"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from runtime_config import get_box_plot_data_path
+
+DATA_PATH = str(get_box_plot_data_path())
 
 def load_data(data_path = DATA_PATH):
     csv_path = os.path.join(data_path, "data_for_SVM.csv")

@@ -5,6 +5,8 @@ Created on Tue Sep  8 01:06:45 2020
 @author: xiaoxiaoyang
 """
 import os
+from pathlib import Path
+import sys
 import numpy as np
 import glob
 import joblib
@@ -12,6 +14,12 @@ import joblib
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 import Global_Var
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from runtime_config import get_data_root
 
 
 def load_data(path, surgeme):
@@ -48,9 +56,12 @@ if __name__ == '__main__':
     TASK_SYMBOL = Global_Var.TASK_SYMBOL
     task_list = ["Suturing", "Knot_Tying", "Needle_Passing"]
 
-    split_files_path = os.path.join('F:', 'Projects', 'surgical_project',
-                                    'da_vici_data_with_iDT_features', 'Data_clips',
-                                    task_list[TASK_SYMBOL] + '_clips', 'kinetic')
+    split_files_path = os.path.join(
+        get_data_root(),
+        'Data_clips',
+        task_list[TASK_SYMBOL] + '_clips',
+        'kinetic',
+    )
 
     if TASK_SYMBOL == 0 or TASK_SYMBOL == 2:
         # For suturing and needle passing
