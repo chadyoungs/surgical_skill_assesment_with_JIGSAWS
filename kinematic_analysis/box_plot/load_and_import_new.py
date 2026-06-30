@@ -17,7 +17,12 @@ class TimeSeriesData(object):
 
     def getMetaData(self):        
         count = 0
-        for file in glob.glob(os.path.join(self.file_name, "meta_file_*.txt")):
+        metadata_files = [
+            file
+            for file in glob.glob(os.path.join(self.file_name, "meta_file_*"))
+            if file.endswith(".txt")
+        ]
+        for file in metadata_files:
             for line in open (file, 'r'):
                 line = line.strip ()
                 if len (line) == 0:
