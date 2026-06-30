@@ -4,6 +4,7 @@ import argparse
 import os
 import runpy
 import sys
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -91,7 +92,9 @@ SCRIPT_REGISTRY = {
 
 
 @contextmanager
-def temporary_environment(task: str, data_root: Path, box_plot_data: Path) -> None:
+def temporary_environment(
+    task: str, data_root: Path, box_plot_data: Path
+) -> Iterator[None]:
     original_values = {
         "JIGSAWS_TASK": os.environ.get("JIGSAWS_TASK"),
         "JIGSAWS_DATA_ROOT": os.environ.get("JIGSAWS_DATA_ROOT"),
@@ -111,7 +114,7 @@ def temporary_environment(task: str, data_root: Path, box_plot_data: Path) -> No
 
 
 @contextmanager
-def temporary_sys_path(script_dir: Path) -> None:
+def temporary_sys_path(script_dir: Path) -> Iterator[None]:
     inserted_paths = []
     for path in (script_dir, REPO_ROOT):
         path_str = str(path)
@@ -127,7 +130,7 @@ def temporary_sys_path(script_dir: Path) -> None:
 
 
 @contextmanager
-def temporary_working_directory(target_dir: Path) -> None:
+def temporary_working_directory(target_dir: Path) -> Iterator[None]:
     original_dir = Path.cwd()
     os.chdir(target_dir)
     try:
@@ -137,7 +140,7 @@ def temporary_working_directory(target_dir: Path) -> None:
 
 
 @contextmanager
-def temporary_argv(argv: list[str]) -> None:
+def temporary_argv(argv: list[str]) -> Iterator[None]:
     original_argv = sys.argv[:]
     sys.argv = argv
     try:

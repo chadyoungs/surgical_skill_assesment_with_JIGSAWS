@@ -33,8 +33,8 @@ def load_data():
     task_lists = list(TASKS)
     task_symbol = get_task_index()
     
-    feature = np.load(SCRIPT_DIR / "{}_feature.npy".format(task_lists[task_symbol]))
-    label = np.load(SCRIPT_DIR / "{}_grs.npy".format(task_lists[task_symbol]))
+    feature = np.load(str(SCRIPT_DIR / "{}_feature.npy".format(task_lists[task_symbol])))
+    label = np.load(str(SCRIPT_DIR / "{}_grs.npy".format(task_lists[task_symbol])))
     
     # selct vel and smooth features
     feature_re=np.reshape(feature,(feature.shape[0],feature.shape[1]*feature.shape[2]))
