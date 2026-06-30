@@ -21,6 +21,8 @@ This script mainly complete Step 1
 """
 
 import os
+from pathlib import Path
+import sys
 import Global_Var
 
 import joblib
@@ -32,6 +34,12 @@ from sklearn.cluster import KMeans
 import numpy as np
 
 import cv2
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from runtime_config import get_stip_features_root
 
 def find_last_frame(videos_features_location):
     videos_features = glob(os.path.join(videos_features_location, '*.txt'))
@@ -121,7 +129,10 @@ if __name__ == '__main__':
     train_list = test.train_sum()
     test_list = test.test_sum()
     
-    videos_features_location = os.path.join('..', 'stip+dct_code', 'raw_data', task_list[TASK_SYMBOL])
+    videos_features_location = os.path.join(
+        get_stip_features_root(),
+        task_list[TASK_SYMBOL],
+    )
     
 #training process
     hog_repositories = [[] for _ in range(len(train_list))]

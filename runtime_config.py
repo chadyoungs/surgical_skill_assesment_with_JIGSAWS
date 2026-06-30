@@ -25,6 +25,13 @@ def get_box_plot_data_path() -> Path:
     return (get_repo_root() / "kinematic_analysis" / "box_plot").resolve()
 
 
+def get_stip_features_root() -> Path:
+    raw_value = os.environ.get("JIGSAWS_STIP_FEATURE_ROOT")
+    if raw_value:
+        return Path(raw_value).expanduser().resolve()
+    return (get_repo_root() / "stip+dct_code" / "raw_data").resolve()
+
+
 def get_task_name(task: str | None = None) -> str:
     selected_task = task or os.environ.get("JIGSAWS_TASK", DEFAULT_TASK)
     if selected_task not in TASKS:
@@ -51,3 +58,10 @@ def get_experimental_setup_root(task: str | None = None) -> Path:
         / get_task_name(task)
         / "unBalanced"
     )
+
+
+def get_trajectory_hand() -> str:
+    hand = os.environ.get("JIGSAWS_TRAJECTORY_HAND", "left").lower()
+    if hand not in {"left", "right"}:
+        raise ValueError("Unsupported trajectory hand '{}'.".format(hand))
+    return hand

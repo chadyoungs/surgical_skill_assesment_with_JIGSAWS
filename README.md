@@ -46,6 +46,8 @@ The unified CLI sets these runtime values for all supported methods:
 - `JIGSAWS_TASK`: `Suturing`, `Knot_Tying`, or `Needle_Passing`
 - `JIGSAWS_DATA_ROOT`: dataset root path
 - `JIGSAWS_BOX_PLOT_DATA`: box-plot CSV directory
+- `JIGSAWS_STIP_FEATURE_ROOT`: STIP raw-feature root
+- `JIGSAWS_TRAJECTORY_HAND`: `left` or `right`
 
 Optional overrides:
 
@@ -54,6 +56,11 @@ python main.py \
   --task Knot_Tying \
   --data-root /absolute/path/to/da_vici_data_with_iDT_features \
   helper generate_metadata
+
+python main.py \
+  --task Suturing \
+  --trajectory-hand right \
+  kinematic trajectory_plot
 ```
 
 ## Notes

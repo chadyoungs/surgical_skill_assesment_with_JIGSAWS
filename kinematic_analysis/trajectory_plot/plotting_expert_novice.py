@@ -9,7 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from runtime_config import get_task_name, get_task_root
+from runtime_config import get_task_name, get_task_root, get_trajectory_hand
 from data_extract_stip import DataExtract
 
 plt.rc("font", family="Times New Roman")
@@ -54,8 +54,8 @@ def main() -> None:
     ax.set_ylabel("y")
     ax.set_zlabel("z")
 
-    plot_left = True
-    if plot_left:
+    trajectory_hand = get_trajectory_hand()
+    if trajectory_hand == "left":
         ax.plot(x_expert_left, y_expert_left, z_expert_left, c="b", label="expert")
         ax.plot(x_novice_left, y_novice_left, z_novice_left, c="r", label="novice")
         output_name = "3D trajectories of left hand of expert and novice surgeon.png"

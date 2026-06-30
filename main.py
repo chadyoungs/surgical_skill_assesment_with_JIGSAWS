@@ -93,16 +93,24 @@ SCRIPT_REGISTRY = {
 
 @contextmanager
 def temporary_environment(
-    task: str, data_root: Path, box_plot_data: Path
+    task: str,
+    data_root: Path,
+    box_plot_data: Path,
+    stip_feature_root: Path,
+    trajectory_hand: str,
 ) -> Iterator[None]:
     original_values = {
         "JIGSAWS_TASK": os.environ.get("JIGSAWS_TASK"),
         "JIGSAWS_DATA_ROOT": os.environ.get("JIGSAWS_DATA_ROOT"),
         "JIGSAWS_BOX_PLOT_DATA": os.environ.get("JIGSAWS_BOX_PLOT_DATA"),
+        "JIGSAWS_STIP_FEATURE_ROOT": os.environ.get("JIGSAWS_STIP_FEATURE_ROOT"),
+        "JIGSAWS_TRAJECTORY_HAND": os.environ.get("JIGSAWS_TRAJECTORY_HAND"),
     }
     os.environ["JIGSAWS_TASK"] = task
     os.environ["JIGSAWS_DATA_ROOT"] = str(data_root)
     os.environ["JIGSAWS_BOX_PLOT_DATA"] = str(box_plot_data)
+    os.environ["JIGSAWS_STIP_FEATURE_ROOT"] = str(stip_feature_root)
+    os.environ["JIGSAWS_TRAJECTORY_HAND"] = trajectory_hand
     try:
         yield
     finally:
@@ -169,6 +177,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(REPO_ROOT / "kinematic_analysis" / "box_plot"),
         help="Path used by the box-plot classifier script.",
     )
+    parser.add_argument(
+        "--stip-feature-root",
+        default=str(REPO_ROOT / "stip+dct_code" / "raw_data"),
+        help="Path to the STIP raw feature root.",
+    )
+    parser.add_argument(
+        "--trajectory-hand",
+        choices=["left", "right"],
+        default="left",
+        help="Hand to render for the trajectory plot.",
+    )
 
     subparsers = parser.add_subparsers(dest="family", required=True)
 
@@ -206,8 +225,15 @@ def run_selected_script(args: argparse.Namespace) -> None:
     argv = spec["argv"](args)
     data_root = Path(args.data_root).expanduser().resolve()
     box_plot_data = Path(args.box_plot_data).expanduser().resolve()
+    stip_feature_root = Path(args.stip_feature_root).expanduser().resolve()
 
-    with temporary_environment(args.task, data_root, box_plot_data):
+    with temporary_environment(
+        args.task,
+        data_root,
+        box_plot_data,
+        stip_feature_root,
+        args.trajectory_hand,
+    ):
         with temporary_sys_path(script_path.parent):
             with temporary_working_directory(script_path.parent):
                 with temporary_argv(argv):

@@ -27,14 +27,14 @@ if str(REPO_ROOT) not in sys.path:
 
 from runtime_config import TASKS, get_task_index
 
-SCRIPT_DIR = Path(__file__).resolve().parent
+script_dir = Path(__file__).resolve().parent
 
 def load_data():
     task_lists = list(TASKS)
     task_symbol = get_task_index()
     
-    feature = np.load(str(SCRIPT_DIR / "{}_feature.npy".format(task_lists[task_symbol])))
-    label = np.load(str(SCRIPT_DIR / "{}_grs.npy".format(task_lists[task_symbol])))
+    feature = np.load(str(script_dir / "{}_feature.npy".format(task_lists[task_symbol])))
+    label = np.load(str(script_dir / "{}_grs.npy".format(task_lists[task_symbol])))
     
     # selct vel and smooth features
     feature_re=np.reshape(feature,(feature.shape[0],feature.shape[1]*feature.shape[2]))
