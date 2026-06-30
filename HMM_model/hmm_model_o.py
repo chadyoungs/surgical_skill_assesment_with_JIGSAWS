@@ -5,6 +5,8 @@ Created on Fri Aug 28 23:50:59 2020
 @author: xiaoxiaoyang
 """
 import os
+from pathlib import Path
+import sys
 import numpy as np
 from hmmlearn import hmm
 import glob
@@ -15,6 +17,12 @@ from data_extract import DataExtract
 from sklearn.decomposition import PCA
 
 import Global_Var
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from runtime_config import get_task_root
 
 
 def load_data(path):
@@ -169,8 +177,7 @@ if __name__ == '__main__':
     train_list = test.train_sum()
     test_list = test.test_sum()
 
-    files_path = os.path.join('.', 'da_vici_data_with_iDT_features',
-                              surgical_task_list[TASK_SYMBOL], 'kinematics', 'AllGestures')
+    files_path = os.path.join(get_task_root(), 'kinematics', 'AllGestures')
     save_expert_model_path = os.path.join('.', 'models',
                                           surgical_task_list[TASK_SYMBOL] + '_expert_model.pkl')
     save_novice_model_path = os.path.join('.', 'models',

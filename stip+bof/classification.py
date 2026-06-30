@@ -20,6 +20,7 @@ Step 4 (Sliding)
 This script mainly complete Step 3
 """
 
+import os
 import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, Normalizer
@@ -56,8 +57,22 @@ time_series_hog = [[] for _ in range(len(train_list))]
 time_series_hof = [[] for _ in range(len(train_list))]
 #extract_labels = [[] for _ in range(len(train_list))]
 for i in range(len(train_list)):
-    time_series_hog[i] = joblib.load(r'.\time_series_data\{}\time_series_hog_set{}_{}.pkl'.format(task_list[TASK_SYMBOL], i+1, N_CLUSTERS))
-    time_series_hof[i] = joblib.load(r'.\time_series_data\{}\time_series_hof_set{}_{}.pkl'.format(task_list[TASK_SYMBOL], i+1, N_CLUSTERS))
+    time_series_hog[i] = joblib.load(
+        os.path.join(
+            ".",
+            "time_series_data",
+            task_list[TASK_SYMBOL],
+            "time_series_hog_set{}_{}.pkl".format(i + 1, N_CLUSTERS),
+        )
+    )
+    time_series_hof[i] = joblib.load(
+        os.path.join(
+            ".",
+            "time_series_data",
+            task_list[TASK_SYMBOL],
+            "time_series_hof_set{}_{}.pkl".format(i + 1, N_CLUSTERS),
+        )
+    )
     #extract_labels[i] = joblib.load(r'.\time_series_data\{}\time_series_surgery_name_set{}_{}.pkl'.format(task_list[TASK_SYMBOL], i+1, N_CLUSTERS))
     
 train_txt_No_sum = []
@@ -162,4 +177,3 @@ for gamma in [0.001, 0.01, 0.1, 1, 10, 100]:
 print("best score: {:.4f}".format(best_score))
 print("best parameters: {}".format(best_parameters))
 print("Test set average score for 5 sets: {:.4f}".format(best_score/len(train_hist_vectors))) 
-

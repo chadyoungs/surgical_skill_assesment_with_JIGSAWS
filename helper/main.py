@@ -1,9 +1,5 @@
 import argparse
-
-from tools import image_stitch
-from metadata_generation import MetaData
-from surgeme_generation import get_metadata, make_dirs, video_surgeme_generation
-
+import os
 from exception import OperationNotFoundError
 
 
@@ -30,6 +26,11 @@ def argument_parse() -> argparse.Namespace:
 def main() -> None:
     args = argument_parse()
     option = args.option
+    os.environ["JIGSAWS_TASK"] = args.task
+
+    from metadata_generation import MetaData
+    from surgeme_generation import get_metadata, make_dirs, video_surgeme_generation
+    from tools import image_stitch
 
     if option == "image_stitch":
         stitch_img_save_name = "image_stitch.jpg"
@@ -46,4 +47,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

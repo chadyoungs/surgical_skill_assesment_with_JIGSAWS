@@ -6,25 +6,27 @@ Created on Mon Jul 20 17:29:20 2020
 This program aiming at extract the start and end frame
 for each video's iDT features.
 '''
+import os
+from pathlib import Path
+import sys
 from glob import glob
 
-'''
-# for linux enviromrnt using command lines
-if len(sys.argv) != 2:
-    print ("Usage", sys.argv[0], "<path-to-root-features-directory>")
-    sys.exit(1)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-# retrieving arguments from command line
-root_path = sys.argv[1]
-'''
-# 0 for Suturing
-TASK_SYMBOL = 0
-task_lists = ["Suturing", "Knot_Tying", "Needle_Passing"]
-# remind that the root_path must point to SuperTrialOut folder!!!
-# Suturing
-root_path = r'F:\Projects\surgical_project\da_vici_data_with_iDT_features\Experimental_setup\{}\unBalanced\GestureClassification\SuperTrialOut'.format(task_lists[TASK_SYMBOL])
-root_path_score = r'F:\Projects\surgical_project\da_vici_data_with_iDT_features\{}'.format(task_lists[TASK_SYMBOL])
-root_path_trans = r'F:\Projects\surgical_project\da_vici_data_with_iDT_features\{}\transcriptions'.format(task_lists[TASK_SYMBOL])
+from runtime_config import (
+    TASKS,
+    get_experimental_setup_root,
+    get_task_index,
+    get_task_root,
+)
+
+TASK_SYMBOL = get_task_index()
+task_lists = list(TASKS)
+root_path = str(get_experimental_setup_root() / "GestureClassification" / "SuperTrialOut")
+root_path_score = str(get_task_root())
+root_path_trans = str(get_task_root() / "transcriptions")
 
 class DataExtract(object):
     def __init__(self):
@@ -37,16 +39,16 @@ class DataExtract(object):
          #retrieves directories inside root path
         self.category = glob(root_path + "/" + "*")
         # eliminate absolute path
-        self.category_abs = [i.split("\\")[-1] for i in self.category]
+        self.category_abs = [os.path.basename(i) for i in self.category]
     
     def get_frame_surgeme(self):
-        txt_files = glob(root_path_trans + "\*.txt")
+        txt_files = glob(os.path.join(root_path_trans, "*.txt"))
         for file in txt_files:
             list_surgeme = []
             list_frameStartNo = []
             list_frameEndNo = []
             
-            temp_0 = file.split("\\")[-1]
+            temp_0 = os.path.basename(file)
             surgery_name = temp_0.split('.')[0]
             for line in open(file, 'r'):
                 line = line.strip()
@@ -66,7 +68,7 @@ class DataExtract(object):
     def get_frame_No(self):
         for count, c in enumerate(self.category):
             # actually there is only one file under the category, we applied "for" for reusing
-            txt_files = glob(c + "\itr_1" + "\*.txt" )
+            txt_files = glob(os.path.join(c, "itr_1", "*.txt"))
             
             if count >= 1:
                 break
@@ -97,8 +99,8 @@ class DataExtract(object):
     
     # each file's score
     def get_score(self):
-        category = root_path_score.split("\\")[-1]
-        txt_file = root_path_score + "\meta_file_" + category +".txt"
+        category = os.path.basename(root_path_score)
+        txt_file = os.path.join(root_path_score, "meta_file_" + category + ".txt")
         
         for line in open(txt_file, 'r'):
             line = line.strip()
@@ -136,8 +138,8 @@ class DataExtract(object):
     # only for ML train and test process
     def get_txt_index(self):
         count = 0
-        category = root_path_score.split("\\")[-1]
-        txt_file = root_path_score + "\meta_file_" + category +".txt"
+        category = os.path.basename(root_path_score)
+        txt_file = os.path.join(root_path_score, "meta_file_" + category + ".txt")
         
         for line in open(txt_file, 'r'):
             line = line.strip()
@@ -155,7 +157,7 @@ class DataExtract(object):
         
         for c in self.category:
             # actually there is only one file under the category, we applied "for" for reusing
-            txt_files_train = c + "\itr_1\Train.txt"
+            txt_files_train = os.path.join(c, "itr_1", "Train.txt")
             txt_files_train_name = []
             
             with open(txt_files_train, 'r') as f:
@@ -180,7 +182,7 @@ class DataExtract(object):
         
         for c in self.category:
             # actually there is only one file under the category, we applied "for" for reusing
-            txt_files_test = c + "\itr_1\Test.txt"
+            txt_files_test = os.path.join(c, "itr_1", "Test.txt")
             txt_files_test_name = []
             
             with open(txt_files_test, 'r') as f:
