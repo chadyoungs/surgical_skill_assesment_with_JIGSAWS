@@ -1,6 +1,7 @@
 
 import os
 import glob
+from pathlib import Path
 import numpy as np
 
 from calculation_new import *
@@ -17,13 +18,9 @@ class TimeSeriesData(object):
 
     def getMetaData(self):        
         count = 0
-        metadata_files = [
-            file
-            for file in glob.glob(os.path.join(self.file_name, "meta_file_*"))
-            if file.endswith(".txt")
-        ]
+        metadata_files = Path(self.file_name).glob("meta_file_*.txt")
         for file in metadata_files:
-            for line in open (file, 'r'):
+            for line in open(file, 'r'):
                 line = line.strip ()
                 if len (line) == 0:
                     break

@@ -58,11 +58,11 @@ def main() -> None:
     if plot_left:
         ax.plot(x_expert_left, y_expert_left, z_expert_left, c="b", label="expert")
         ax.plot(x_novice_left, y_novice_left, z_novice_left, c="r", label="novice")
-        output_name = "3D_trajectories_left.png"
+        output_name = "3D trajectories of left hand of expert and novice surgeon.png"
     else:
         ax.plot(x_expert_right, y_expert_right, z_expert_right, c="b", label="expert")
         ax.plot(x_novice_right, y_novice_right, z_novice_right, c="r", label="novice")
-        output_name = "3D_trajectories_right.png"
+        output_name = "3D trajectories of right hand of expert and novice surgeon.png"
 
     plt.legend(loc="best")
     plt.savefig(output_name, dpi=300)
