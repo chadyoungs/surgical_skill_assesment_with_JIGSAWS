@@ -12,37 +12,23 @@ from runtime_config import DEFAULT_TASK, TASKS, get_repo_root
 
 REPO_ROOT = get_repo_root()
 
+def build_helper_entry(method: str) -> dict[str, object]:
+    return {
+        "path": REPO_ROOT / "helper" / "main.py",
+        "argv": lambda args: [
+            "main.py",
+            "--task",
+            args.task,
+            "--option",
+            method,
+        ],
+    }
+
+
 SCRIPT_REGISTRY = {
-    ("helper", "generate_metadata"): {
-        "path": REPO_ROOT / "helper" / "main.py",
-        "argv": lambda args: [
-            "main.py",
-            "--task",
-            args.task,
-            "--option",
-            "generate_metadata",
-        ],
-    },
-    ("helper", "generate_gesture_clips"): {
-        "path": REPO_ROOT / "helper" / "main.py",
-        "argv": lambda args: [
-            "main.py",
-            "--task",
-            args.task,
-            "--option",
-            "generate_gesture_clips",
-        ],
-    },
-    ("helper", "image_stitch"): {
-        "path": REPO_ROOT / "helper" / "main.py",
-        "argv": lambda args: [
-            "main.py",
-            "--task",
-            args.task,
-            "--option",
-            "image_stitch",
-        ],
-    },
+    ("helper", "generate_metadata"): build_helper_entry("generate_metadata"),
+    ("helper", "generate_gesture_clips"): build_helper_entry("generate_gesture_clips"),
+    ("helper", "image_stitch"): build_helper_entry("image_stitch"),
     ("hmm", "train_observations"): {
         "path": REPO_ROOT / "HMM_model" / "train_observations.py",
         "argv": lambda args: ["train_observations.py"],

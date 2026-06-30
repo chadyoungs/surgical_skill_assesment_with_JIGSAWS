@@ -32,8 +32,8 @@ def get_stip_features_root() -> Path:
     return (get_repo_root() / "stip+dct_code" / "raw_data").resolve()
 
 
-def get_task_name(task: str | None = None) -> str:
-    selected_task = task or os.environ.get("JIGSAWS_TASK", DEFAULT_TASK)
+def get_task_name(task_name: str | None = None) -> str:
+    selected_task = task_name or os.environ.get("JIGSAWS_TASK", DEFAULT_TASK)
     if selected_task not in TASKS:
         raise ValueError(
             "Unsupported task '{}'. Expected one of: {}".format(
@@ -43,19 +43,19 @@ def get_task_name(task: str | None = None) -> str:
     return selected_task
 
 
-def get_task_index(task: str | None = None) -> int:
-    return TASKS.index(get_task_name(task))
+def get_task_index(task_name: str | None = None) -> int:
+    return TASKS.index(get_task_name(task_name))
 
 
-def get_task_root(task: str | None = None) -> Path:
-    return get_data_root() / get_task_name(task)
+def get_task_root(task_name: str | None = None) -> Path:
+    return get_data_root() / get_task_name(task_name)
 
 
-def get_experimental_setup_root(task: str | None = None) -> Path:
+def get_experimental_setup_root(task_name: str | None = None) -> Path:
     return (
         get_data_root()
         / "Experimental_setup"
-        / get_task_name(task)
+        / get_task_name(task_name)
         / "unBalanced"
     )
 
