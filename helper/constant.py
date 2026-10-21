@@ -1,11 +1,17 @@
 from pathlib import Path
+import sys
 
-# Dataset root (two levels up from this file)
-ROOT: Path = Path(__file__).parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-TASK_LIST = ["Suturing", "Knot_Tying", "Needle_Passing"]
-TASK_CHOICE = 0
-TASK = TASK_LIST[TASK_CHOICE]
+from runtime_config import TASKS, get_data_root, get_task_index, get_task_name
+
+ROOT: Path = get_data_root()
+
+TASK_LIST = list(TASKS)
+TASK_CHOICE = get_task_index()
+TASK = get_task_name()
 
 # Image-stitching dimensions
 STITCH_IMAGE_COUNT = 3

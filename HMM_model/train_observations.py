@@ -16,6 +16,12 @@ from sklearn.decomposition import PCA
 
 import Global_Var
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from runtime_config import get_data_root
+
 
 # ---------------------------------------------------------------------------
 # Task/surgeme configuration (mirrors hmm_model_o.py)

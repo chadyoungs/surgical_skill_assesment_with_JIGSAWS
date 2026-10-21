@@ -12,13 +12,19 @@ from __future__ import annotations
 import json
 import os
 import pickle
+import sys
 from collections import defaultdict
 from glob import glob
 from pathlib import Path
 
 import numpy as np
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 import Global_Var
+from runtime_config import get_data_root
 
 # ---------------------------------------------------------------------------
 # Module-level constants
@@ -30,7 +36,7 @@ task_list = ['Suturing', 'Knot_Tying', 'Needle_Passing']
 TASK_SYMBOL = Global_Var.TASK_SYMBOL
 TASK = task_list[TASK_SYMBOL]
 
-_DATA_ROOT = Path('.') / 'da_vici_data_with_iDT_features'
+_DATA_ROOT = get_data_root()
 
 # remind that root_path must point to SuperTrialOut folder
 root_path = str(_DATA_ROOT / 'Experimental_setup' / TASK / 'unBalanced' / 'SkillDetection' / 'SuperTrialOut')
