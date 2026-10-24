@@ -1,17 +1,10 @@
-from pathlib import Path
-import sys
+"""Global configuration constants for the HMM model."""
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+# 0 for Suturing, 1 for Knot_Tying, 2 for Needle_Passing
+TASK_SYMBOL: int = 0
 
-from runtime_config import get_task_index
+# Number of K-means clusters used for observation quantisation
+CLUSTERS: int = 64
 
-# 0 for Suturing, 1 for Knot Tying, 2 for Needle Passing
-TASK_SYMBOL = get_task_index()
-
-CLUSTERS = 64
-N_CLUSTERS = CLUSTERS
-
-# for PCA in [hmm_model_o.py] and [train_observations.py]
-PCA_COMPONENTS = 4
+# Number of PCA components used in hmm_model_o.py and train_observations.py
+PCA_COMPONENTS: int = 4

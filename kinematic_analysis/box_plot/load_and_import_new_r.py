@@ -1,133 +1,155 @@
+#!/usr/bin/env python3
+"""
+Data loading, feature extraction, and CSV export for kinematic analysis.
 
-
-import os
-import glob
-import numpy as np
+Extends :mod:`load_and_import_new` by additionally writing the computed
+features to a ``data_for_SVM.csv`` file alongside the ``.npy`` arrays.
+"""
+from __future__ import annotations
 
 import csv
+from pathlib import Path
 
-from calculation_new import *
+import numpy as np
+
+from calculation_new import DataCal
+
+# CSV column headers
+_CSV_HEADERS = [
+    "time_sum",
+    "displacement_sum_mtfl", "velocity_ave_mtfl", "velocity_var_mtfl",
+    "curvity_ave_mtfl", "curvity_var_mtfl",
+    "smooth_ave_mtfl", "smooth_var_mtfl",
+    "turning_ave_mtfl", "turning_var_mtfl",
+    "displacement_sum_mtfr", "velocity_ave_mtfr", "velocity_var_mtfr",
+    "curvity_ave_mtfr", "curvity_var_mtfr",
+    "smooth_ave_mtfr", "smooth_var_mtfr",
+    "turning_ave_mtfr", "turning_var_mtfr",
+    "displacement_sum_psm1", "velocity_ave_psm1", "velocity_var_psm1",
+    "curvity_ave_psm1", "curvity_var_psm1",
+    "smooth_ave_psm1", "smooth_var_psm1",
+    "turning_ave_psm1", "turning_var_psm1",
+    "displacement_sum_psm2", "velocity_ave_psm2", "velocity_var_psm2",
+    "curvity_ave_psm2", "curvity_var_psm2",
+    "smooth_ave_psm2", "smooth_var_psm2",
+    "turning_ave_psm2", "turning_var_psm2",
+    "class",
+]
 
 
-class TimeSeriesData(object):
-    def __init__(self):
-        self.classmode = ['GRS'] # ['SELFPROCLAIMED']
-        self.metaData = {}
-        
-    def choose_file(self,file_name):
-        self.file_name = file_name
-        print("loading data name is:",self.file_name)
+class TimeSeriesData:
+    """Load kinematic data, compute features, and export results to CSV."""
 
-    def getMetaData(self):        
-        count = 0
-        for file in glob.glob (self.file_name + '\meta_file_' + '*' + '.txt'):
-            for line in open (file, 'r'):
-                line = line.strip ()
-                if len (line) == 0:
+    def __init__(self) -> None:
+        self.classmode: list[str] = ["GRS"]
+        self.metaData: dict = {}
+        self.file_name: str = ""
+
+    def choose_file(self, file_name: str | Path) -> None:
+        """Set the root directory containing the meta-data file."""
+        self.file_name = str(file_name)
+        print(f"loading data name is: {self.file_name}")
+
+    def getMetaData(self) -> None:  # noqa: N802 – kept for backward compat
+        """Parse the task meta-data file and populate ``self.metaData``."""
+        for meta_file in Path(self.file_name).glob("meta_file_*.txt"):
+            for line in meta_file.read_text().splitlines():
+                line = line.strip()
+                if not line:
                     break
-                b = line.split ()
-                surgery_name = b[0]
-                skill_level = b[1]
-                b = b[2:]
-                scores = [int (e) for e in b]
+                parts = line.split()
+                surgery_name = parts[0]
+                skill_level = parts[1]
+                scores = [int(e) for e in parts[2:]]
                 self.metaData[surgery_name] = (skill_level, scores)
 
-    def getSkillLevel(self, surgery_name):
-        if self.metaData.__contains__ (surgery_name):
-            if self.classmode[0] == 'GRS':
-                score_grs = self.metaData[surgery_name][1][0]
+    def getSkillLevel(self, surgery_name: str) -> int | None:  # noqa: N802 – kept for backward compat
+        """Return the skill label or ``None`` if the surgery is not in metadata."""
+        if surgery_name not in self.metaData:
+            return None
 
-                if surgery_name.__contains__ ('Knot_Tying'):
-                    if score_grs <= 15:
-                        y = 0   #novice
-                    else:
-                        y = 2   #expert
-                if surgery_name.__contains__ ('Suturing'):
-                    if score_grs <= 19:
-                        y = 0   #novice
-                    else:
-                        y = 2   #expert
-                elif surgery_name.__contains__ ('Needle_Passing'):
-                    if score_grs <= 15:
-                        y = 0   #novice
-                    elif score_grs > 15 and score_grs < 20:
-                        y = 1
-                    else:
-                        y = 2   #expert
-                return y
+        if self.classmode[0] != "GRS":
+            return None
+
+        score_grs = self.metaData[surgery_name][1][0]
+
+        if "Knot_Tying" in surgery_name:
+            return 0 if score_grs <= 15 else 2
+        if "Suturing" in surgery_name:
+            return 0 if score_grs <= 19 else 2
+        if "Needle_Passing" in surgery_name:
+            if score_grs <= 15:
+                return 0
+            elif score_grs < 20:
+                return 1
+            return 2
         return None
 
-    # import raw data and get window slides
-    def getKinematicData(self, url):
-        dataX = np.zeros ((0, 4, 10))
-        dataX = dataX.tolist()
-        dataY = np.zeros ((0, 1))
+    def getKinematicData(  # noqa: N802 – kept for backward compat
+        self,
+        url: str | Path,
+        csv_path: str | Path = "data_for_SVM.csv",
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Load kinematic files, compute features, write CSV, and return arrays.
 
-        print ("loading data from url:\t", str (url))
-        filelist = glob.glob (url + "\*.txt")  # return a list of all txt files in the directory
+        Args:
+            url: Directory containing per-trial ``.txt`` kinematic files.
+            csv_path: Destination CSV file path.
 
-        f = open('data_for_SVM.csv','w',encoding='utf-8',newline='')
-        csv_writer = csv.writer(f)
-        csv_writer.writerow(["time_sum", "displacement_sum_mtfl", "velocity_ave_mtfl", \
-                             "velocity_var_mtfl", "curvity_ave_mtfl", "curvity_var_mtfl", \
-                             "smooth_ave_mtfl", "smooth_var_mtfl", "turning_ave_mtfl", "turning_var_mtfl",  \
-                             "displacement_sum_mtfr", "velocity_ave_mtfr", \
-                             "velocity_var_mtfr", "curvity_ave_mtfr", "curvity_var_mtfr", \
-                             "smooth_ave_mtfr", "smooth_var_mtfr", "turning_ave_mtfr", "turning_var_mtfr",  \
-                             "displacement_sum_psm1", "velocity_ave_psm1", \
-                             "velocity_var_psm1", "curvity_ave_psm1", "curvity_var_psm1", \
-                             "smooth_ave_psm1", "smooth_var_psm1", "turning_ave_psm1", "turning_var_psm1",  \
-                             "displacement_sum_psm2", "velocity_ave_psm2", \
-                             "velocity_var_psm2", "curvity_ave_psm2", "curvity_var_psm2", \
-                             "smooth_ave_psm2", "smooth_var_psm2", "turning_ave_psm2", "turning_var_psm2", \
-                             "class"
-                             ])
-        
-        for file in filelist:
-            file_name = os.path.basename(file)  # 'Needle_Passing_H004.txt'
-            surgery_name = os.path.splitext(file_name)[0]  # 'Needle_Passing_H004'
-            
-            y = self.getSkillLevel(surgery_name)
-            if y is None:
-                continue
-            
-            print(y)
-            # reading kinematic data from a file
-            x = np.genfromtxt (file, delimiter='', dtype=np.float32)
+        Returns:
+            A 2-tuple ``(dataX, dataY)`` where *dataX* has shape
+            ``(n_trials, 4, 10)`` and *dataY* has shape ``(n_trials, 1)``.
+        """
+        data_x: list = []
+        data_y = np.zeros((0, 1))
 
-           # caculating global movement features
-           
-            x_calculate = DataCal()
-        
-            x_calculate.getFile(x,'MTF_L')
-            feature_MTF_L= x_calculate.cal_processing()
-            x_calculate.getFile(x,'MTF_R')
-            feature_MTF_R= x_calculate.cal_processing()
-            x_calculate.getFile(x,'PSM_1')
-            feature_PSM_1= x_calculate.cal_processing()
-            x_calculate.getFile(x,'PSM_2')
-            feature_PSM_2= x_calculate.cal_processing()
-            
-            csv_writer.writerow([str(feature_MTF_L[0]),  str(feature_MTF_L[1]), str(feature_MTF_L[2]), \
-                                 str(feature_MTF_L[3]),  str(feature_MTF_L[4]), str(feature_MTF_L[5]), \
-                                 str(feature_MTF_L[6]),  str(feature_MTF_L[7]), str(feature_MTF_L[8]), str(feature_MTF_L[9]), \
-                                 str(feature_MTF_R[1]),  str(feature_MTF_R[2]), \
-                                 str(feature_MTF_R[3]),  str(feature_MTF_R[4]), str(feature_MTF_R[5]), \
-                                 str(feature_MTF_R[6]),  str(feature_MTF_R[7]), str(feature_MTF_R[8]), str(feature_MTF_R[9]), \
-                                 str(feature_PSM_1[1]),  str(feature_PSM_1[2]), \
-                                 str(feature_PSM_1[3]),  str(feature_PSM_1[4]), str(feature_PSM_1[5]), \
-                                 str(feature_PSM_1[6]),  str(feature_PSM_1[7]), str(feature_PSM_1[8]), str(feature_PSM_1[9]), \
-                                 str(feature_PSM_2[1]),  str(feature_PSM_2[2]), \
-                                 str(feature_PSM_2[3]),  str(feature_PSM_2[4]), str(feature_PSM_2[5]), \
-                                 str(feature_PSM_2[6]),  str(feature_PSM_2[7]), str(feature_PSM_2[8]), str(feature_PSM_2[9]), \
-                                 str(y)
-                                 ])
-            
-            feature=np.vstack ((feature_MTF_L,feature_MTF_R,feature_PSM_1,feature_PSM_2))
-            
-            feature=feature.tolist()
-            dataX.append(feature)
-            dataY = np.vstack ((dataY, y))
-            
-        dataX=np.array(dataX)
-        return dataX, dataY
+        print(f"loading data from url:\t{url}")
+        with open(csv_path, "w", encoding="utf-8", newline="") as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(_CSV_HEADERS)
+
+            for file in sorted(Path(url).glob("*.txt")):
+                surgery_name = file.stem
+                y = self.getSkillLevel(surgery_name)
+                if y is None:
+                    continue
+                print(y)
+
+                x = np.genfromtxt(str(file), delimiter="", dtype=np.float32)
+
+                calculator = DataCal()
+                calculator.getFile(x, "MTF_L")
+                feature_mtf_l = calculator.cal_processing()
+                calculator.getFile(x, "MTF_R")
+                feature_mtf_r = calculator.cal_processing()
+                calculator.getFile(x, "PSM_1")
+                feature_psm_1 = calculator.cal_processing()
+                calculator.getFile(x, "PSM_2")
+                feature_psm_2 = calculator.cal_processing()
+
+                writer.writerow([
+                    str(feature_mtf_l[0]),
+                    str(feature_mtf_l[1]), str(feature_mtf_l[2]), str(feature_mtf_l[3]),
+                    str(feature_mtf_l[4]), str(feature_mtf_l[5]),
+                    str(feature_mtf_l[6]), str(feature_mtf_l[7]),
+                    str(feature_mtf_l[8]), str(feature_mtf_l[9]),
+                    str(feature_mtf_r[1]), str(feature_mtf_r[2]), str(feature_mtf_r[3]),
+                    str(feature_mtf_r[4]), str(feature_mtf_r[5]),
+                    str(feature_mtf_r[6]), str(feature_mtf_r[7]),
+                    str(feature_mtf_r[8]), str(feature_mtf_r[9]),
+                    str(feature_psm_1[1]), str(feature_psm_1[2]), str(feature_psm_1[3]),
+                    str(feature_psm_1[4]), str(feature_psm_1[5]),
+                    str(feature_psm_1[6]), str(feature_psm_1[7]),
+                    str(feature_psm_1[8]), str(feature_psm_1[9]),
+                    str(feature_psm_2[1]), str(feature_psm_2[2]), str(feature_psm_2[3]),
+                    str(feature_psm_2[4]), str(feature_psm_2[5]),
+                    str(feature_psm_2[6]), str(feature_psm_2[7]),
+                    str(feature_psm_2[8]), str(feature_psm_2[9]),
+                    str(y),
+                ])
+
+                feature = np.vstack((feature_mtf_l, feature_mtf_r, feature_psm_1, feature_psm_2))
+                data_x.append(feature.tolist())
+                data_y = np.vstack((data_y, y))
+
+        return np.array(data_x), data_y

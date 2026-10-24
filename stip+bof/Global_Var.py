@@ -1,23 +1,16 @@
-from pathlib import Path
-import sys
+"""Global configuration constants for the STIP + BoF pipeline."""
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+# 0 for Suturing, 1 for Knot_Tying, 2 for Needle_Passing
+TASK_SYMBOL: int = 0
 
-from runtime_config import get_task_index
+# Number of K-means clusters used for the BoF vocabulary (HOG and HOF)
+CLUSTERS: int = 400
 
-# global variable
-# 0 for Suturing, 1 for Knot Tying, 2 for Need Passing
-TASK_SYMBOL_Global = get_task_index()
+# Maximum number of STIP feature samples used during vocabulary training
+SELECTED_FEATURES_NO: int = 100000
 
-# in clustering.py
-# for both HOG and HOF
-CLUSTERS = 400
-SELECTED_FEATURES_No = 100000
-
-# in feature_processing.py
-EXPAND_RADIUS = 5
-REMOVE_WINDOW_SIZE = 6
-SAMPLE_RATE = 2
-PADDING_SAMPLES = 20
+# Feature-processing parameters
+EXPAND_RADIUS: int = 5
+REMOVE_WINDOW_SIZE: int = 6
+SAMPLE_RATE: int = 2
+PADDING_SAMPLES: int = 20

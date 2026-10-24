@@ -1,76 +1,75 @@
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
+"""
+Box-plot comparison of expert vs novice kinematic features.
+
+Update DATA_DIR and KINEMATICS_DIR below to point at your local dataset.
+"""
+from __future__ import annotations
+
 from pathlib import Path
-import sys
+
+import numpy as np
 
 from load_and_import_new import TimeSeriesData
 from analysis_new import TotalData
-import numpy as np
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
-from runtime_config import get_task_name, get_task_root
+# ---------------------------------------------------------------------------
+# Paths – update these to match your local dataset location
+# ---------------------------------------------------------------------------
+DATA_DIR: Path = Path(".") / "da_vici_data_with_iDT_features" / "Suturing"
+KINEMATICS_DIR: Path = DATA_DIR / "kinematics" / "AllGestures"
 
 
 def main() -> None:
-    task_name = get_task_name()
-    task_root = get_task_root()
-    all_gestures_dir = task_root / "kinematics" / "AllGestures"
-
     timeseriesdata = TimeSeriesData()
-    timeseriesdata.choose_file(str(task_root))
+    timeseriesdata.choose_file(DATA_DIR)
     timeseriesdata.getMetaData()
-    feature, label = timeseriesdata.getKinematicData(str(all_gestures_dir))
+    feature, label = timeseriesdata.getKinematicData(KINEMATICS_DIR)
 
     feature_novice = feature[np.where(label == 0)[0]]
     feature_expert = feature[np.where(label == 2)[0]]
 
-    analysisexpert_mtfL = TotalData()
-    analysisexpert_mtfL.getFile(feature_expert, "MTF_L")
-    analysisexpert_mtfL.total_analysis()
+    # Left-arm (MTF_L) comparison
+    expert_mtf_l = TotalData()
+    expert_mtf_l.getFile(feature_expert, "MTF_L")
+    expert_mtf_l.total_analysis()
 
-    analysisnovice_mtfL = TotalData()
-    analysisnovice_mtfL.getFile(feature_novice, "MTF_L")
-    analysisnovice_mtfL.total_analysis()
+    novice_mtf_l = TotalData()
+    novice_mtf_l.getFile(feature_novice, "MTF_L")
+    novice_mtf_l.total_analysis()
 
-    analysisexpert_mtfR = TotalData()
-    analysisexpert_mtfR.getFile(feature_expert, "MTF_R")
-    analysisexpert_mtfR.total_analysis()
+    # Right-arm (MTF_R) comparison
+    expert_mtf_r = TotalData()
+    expert_mtf_r.getFile(feature_expert, "MTF_R")
+    expert_mtf_r.total_analysis()
 
-    analysisnovice_mtfR = TotalData()
-    analysisnovice_mtfR.getFile(feature_novice, "MTF_R")
-    analysisnovice_mtfR.total_analysis()
+    novice_mtf_r = TotalData()
+    novice_mtf_r.getFile(feature_novice, "MTF_R")
+    novice_mtf_r.total_analysis()
 
-    analysisnovice_mtfL.visual_comparison(
-        analysisexpert_mtfL,
-        analysisexpert_mtfR,
-        analysisnovice_mtfR,
-    )
+    novice_mtf_l.visual_comparison(expert_mtf_l, expert_mtf_r, novice_mtf_r)
 
-    analysisexpert_psm1 = TotalData()
-    analysisexpert_psm1.getFile(feature_expert, "PSM_1")
-    analysisexpert_psm1.total_analysis()
+    # PSM1 comparison
+    expert_psm1 = TotalData()
+    expert_psm1.getFile(feature_expert, "PSM_1")
+    expert_psm1.total_analysis()
 
-    analysisnovice_psm1 = TotalData()
-    analysisnovice_psm1.getFile(feature_novice, "PSM_1")
-    analysisnovice_psm1.total_analysis()
+    novice_psm1 = TotalData()
+    novice_psm1.getFile(feature_novice, "PSM_1")
+    novice_psm1.total_analysis()
 
-    analysisexpert_psm2 = TotalData()
-    analysisexpert_psm2.getFile(feature_expert, "PSM_2")
-    analysisexpert_psm2.total_analysis()
+    # PSM2 comparison
+    expert_psm2 = TotalData()
+    expert_psm2.getFile(feature_expert, "PSM_2")
+    expert_psm2.total_analysis()
 
-    analysisnovice_psm2 = TotalData()
-    analysisnovice_psm2.getFile(feature_novice, "PSM_2")
-    analysisnovice_psm2.total_analysis()
+    novice_psm2 = TotalData()
+    novice_psm2.getFile(feature_novice, "PSM_2")
+    novice_psm2.total_analysis()
 
-    analysisnovice_psm1.visual_comparison(
-        analysisexpert_psm1,
-        analysisexpert_psm2,
-        analysisnovice_psm2,
-    )
-    print("Box-plot analysis completed for {}.".format(task_name))
+    novice_psm1.visual_comparison(expert_psm1, expert_psm2, novice_psm2)
 
 
 if __name__ == "__main__":
     main()
+
